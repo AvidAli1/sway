@@ -1,103 +1,200 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState } from "react"
+import Header from "./components/Header"
+import SwipeInterface from "./components/SwipeInterface"
+import ProductGrid from "./components/ProductGrid"
+import LoginModal from "./components/LoginModal"
+import { Filter, X } from "lucide-react"
+
+export default function HomePage() {
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [user, setUser] = useState(null)
+  const [viewMode, setViewMode] = useState("swipe") // 'swipe' or 'grid'
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
+
+  // Mock products data
+  const [products] = useState([
+    {
+      id: 1,
+      title: "Premium Cotton T-Shirt",
+      brand: "Urban Style",
+      price: 2500,
+      image: "/placeholder.svg?height=400&width=300",
+      category: "tops",
+      size: ["S", "M", "L", "XL"],
+      colors: ["black", "white", "grey"],
+    },
+    {
+      id: 2,
+      title: "Denim Jacket",
+      brand: "Street Wear",
+      price: 4500,
+      image: "/placeholder.svg?height=400&width=300",
+      category: "jackets",
+      size: ["M", "L", "XL"],
+      colors: ["blue", "black"],
+    },
+    {
+      id: 3,
+      title: "Casual Sneakers",
+      brand: "Comfort Walk",
+      price: 3200,
+      image: "/placeholder.svg?height=400&width=300",
+      category: "shoes",
+      size: ["7", "8", "9", "10", "11"],
+      colors: ["white", "black", "grey"],
+    },
+  ])
+
+  const handleAddToCart = (product) => {
+    setCartCount((prev) => prev + 1)
+    // Add cart logic here
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-white">
+      <Header
+        user={user}
+        onLoginClick={() => setIsLoginOpen(true)}
+        cartCount={cartCount}
+        onViewModeChange={setViewMode}
+        viewMode={viewMode}
+      />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Mobile Filter Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-lg transform transition-transform duration-300 ${isFilterOpen ? "translate-x-0" : "-translate-x-full"} lg:hidden`}
+      >
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Filters</h2>
+            <button onClick={() => setIsFilterOpen(false)}>
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <FilterSidebar />
+      </div>
+
+      {/* Overlay */}
+      {isFilterOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setIsFilterOpen(false)} />
+      )}
+
+      <div className="flex">
+        {/* Desktop Filter Sidebar */}
+        <div className="hidden lg:block w-80 bg-gray-50 min-h-screen border-r">
+          <FilterSidebar />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1">
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden p-4 border-b bg-white sticky top-16 z-30">
+            <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 text-gray-700">
+              <Filter className="w-5 h-5" />
+              <span>Filters</span>
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="p-4">
+            {viewMode === "swipe" ? (
+              <SwipeInterface products={products} onAddToCart={handleAddToCart} />
+            ) : (
+              <ProductGrid products={products} onAddToCart={handleAddToCart} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={setUser} />
     </div>
-  );
+  )
+}
+
+function FilterSidebar() {
+  const [filters, setFilters] = useState({
+    brands: [],
+    categories: [],
+    priceRange: [0, 10000],
+    sizes: [],
+    colors: [],
+  })
+
+  const brands = ["Urban Style", "Street Wear", "Comfort Walk", "Elite Fashion"]
+  const categories = ["tops", "jackets", "jeans", "shoes", "accessories"]
+  const sizes = ["XS", "S", "M", "L", "XL", "XXL"]
+  const colors = ["black", "white", "grey", "blue", "red", "yellow"]
+
+  return (
+    <div className="p-4 space-y-6">
+      <div>
+        <h3 className="font-semibold mb-3">Brands</h3>
+        <div className="space-y-2">
+          {brands.map((brand) => (
+            <label key={brand} className="flex items-center">
+              <input type="checkbox" className="mr-2" />
+              <span className="text-sm">{brand}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-3">Categories</h3>
+        <div className="space-y-2">
+          {categories.map((category) => (
+            <label key={category} className="flex items-center">
+              <input type="checkbox" className="mr-2" />
+              <span className="text-sm capitalize">{category}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-3">Price Range</h3>
+        <div className="space-y-2">
+          <input type="range" min="0" max="10000" className="w-full" />
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>PKR 0</span>
+            <span>PKR 10,000+</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-3">Sizes</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {sizes.map((size) => (
+            <label key={size} className="flex items-center">
+              <input type="checkbox" className="mr-1" />
+              <span className="text-sm">{size}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold mb-3">Colors</h3>
+        <div className="grid grid-cols-4 gap-2">
+          {colors.map((color) => (
+            <label key={color} className="flex items-center">
+              <input type="checkbox" className="mr-1" />
+              <div
+                className={`w-4 h-4 rounded-full border bg-${color === "white" ? "white border-gray-300" : color === "black" ? "black" : color === "grey" ? "gray-500" : color === "blue" ? "blue-500" : color === "red" ? "red-500" : "yellow-500"}`}
+              ></div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <button className="w-full bg-yellow-400 text-black py-2 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors">
+        Apply Filters
+      </button>
+    </div>
+  )
 }
