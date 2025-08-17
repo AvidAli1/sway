@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react"
 import { ShoppingCart, X, RotateCcw } from "lucide-react"
-import Image from 'next/image';
 
 export default function SwipeInterface({ products, onAddToCart }) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -115,7 +114,7 @@ export default function SwipeInterface({ products, onAddToCart }) {
         >
           {/* Product Image */}
           <div className="relative h-2/3 overflow-hidden rounded-t-2xl">
-            <Image
+            <img
               src={currentProduct.image || "/placeholder.svg"}
               alt={currentProduct.title}
               fill
