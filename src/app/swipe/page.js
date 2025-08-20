@@ -182,32 +182,41 @@ export default function SwipePage() {
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Back Button */}
-            <Link href="/" className="flex items-center gap-3 text-gray-600 hover:text-black transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Back to Home</span>
-            </Link>
+            {/* Left: Back Button - Hidden on mobile, show only icon */}
+            <div className="flex items-center">
+              <Link
+                href="/"
+                className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium hidden sm:block">Back to Home</span>
+              </Link>
+            </div>
 
-            {/* Logo */}
-            <div className="absolute left-1/2 transform -translate-x-1/2">
+            {/* Center: Logo */}
+            <div className="flex-1 flex justify-left sm:justify-left justify-start ml-4 sm:ml-0">
               <h1 className="text-xl font-bold text-black">
                 S<span className="text-yellow-400">W</span>AY
               </h1>
             </div>
 
-            {/* Right Actions */}
-            <div className="flex items-center space-x-4">
+            {/* Right: Actions */}
+            <div className="flex items-center space-x-4 sm:space-x-6">
               {/* Filter Button */}
               <button
                 onClick={() => setShowFilters(true)}
                 className="p-2 text-gray-600 hover:text-black transition-colors"
+                aria-label="Filters"
               >
                 <Filter className="w-5 h-5" />
               </button>
 
               {/* Cart */}
-              <button className="relative p-2 text-gray-600 hover:text-black transition-colors">
-                <ShoppingCart className="w-6 h-6" />
+              <button
+                className="relative p-2 text-gray-600 hover:text-black transition-colors"
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
                     {cartCount}
@@ -217,13 +226,15 @@ export default function SwipePage() {
 
               {/* User */}
               {user ? (
-                <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs sm:text-sm font-semibold text-black">
+                    {user.name?.[0] || "U"}
+                  </span>
                 </div>
               ) : (
                 <button
                   onClick={() => setIsLoginOpen(true)}
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                  className="bg-black text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-gray-800 transition-colors text-xs sm:text-sm font-medium"
                 >
                   Login
                 </button>
@@ -340,9 +351,8 @@ export default function SwipePage() {
                   ].map((color) => (
                     <label
                       key={color.value}
-                      className={`flex flex-col items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors ${
-                        filters.colors.includes(color.value) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
-                      }`}
+                      className={`flex flex-col items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors ${filters.colors.includes(color.value) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -351,8 +361,7 @@ export default function SwipePage() {
                         className="sr-only"
                       />
                       <div
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          color.value === "black"
+                        className={`w-6 h-6 rounded-full border-2 ${color.value === "black"
                             ? "bg-black border-gray-300"
                             : color.value === "white"
                               ? "bg-white border-gray-300"
@@ -363,7 +372,7 @@ export default function SwipePage() {
                                   : color.value === "yellow"
                                     ? "bg-yellow-400 border-yellow-300"
                                     : "bg-amber-600 border-amber-300"
-                        }`}
+                          }`}
                       />
                       <span className="text-xs">{color.name}</span>
                     </label>
