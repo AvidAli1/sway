@@ -174,59 +174,95 @@ export default function HomePage() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
-            <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">Menu</h2>
-                <button onClick={() => setIsMobileMenuOpen(false)}>
-                  <X className="w-6 h-6" />
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            {/* Added rounded-bl-xl class here for bottom left corner rounding */}
+            <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out rounded-bl-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
+                <h2 className="text-xl font-bold text-gray-900">Menu</h2>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all duration-200"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <nav className="p-4 space-y-4">
-                <Link href="/" className="block py-2 text-gray-900 font-medium">
-                  Home
-                </Link>
-                <Link href="/products" className="block py-2 text-gray-600">
-                  Products
-                </Link>
-                <Link href="/brands" className="block py-2 text-gray-600">
-                  Brands
-                </Link>
-                <Link href="/swipe" className="block py-2 text-gray-600">
-                  Swipe Shop
-                </Link>
-                <div className="pt-4 border-t">
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    />
-                  </div>
-                  {!user && (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => {
-                          setIsLoginOpen(true)
-                          setIsMobileMenuOpen(false)
-                        }}
-                        className="w-full text-left py-2 text-gray-600"
-                      >
-                        Login
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsLoginOpen(true)
-                          setIsMobileMenuOpen(false)
-                        }}
-                        className="w-full bg-yellow-400 text-black py-2 rounded-lg font-medium"
-                      >
-                        Sign Up
-                      </button>
+
+              {/* Navigation */}
+              <nav className="flex flex-col h-full bg-white">
+                <div className="flex-1 px-4 py-6 space-y-1 bg-white">
+                  <Link
+                    href="/"
+                    className="flex items-center px-3 py-3 text-gray-900 font-semibold hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all duration-200 group bg-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>Home</span>
+                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                  </Link>
+                  <Link
+                    href="/products"
+                    className="flex items-center px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all duration-200 group bg-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>Products</span>
+                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                  </Link>
+                  <Link
+                    href="/brands"
+                    className="flex items-center px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all duration-200 group bg-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>Brands</span>
+                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                  </Link>
+                  <Link
+                    href="/swipe"
+                    className="flex items-center px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all duration-200 group bg-white"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>Swipe Shop</span>
+                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                  </Link>
+
+                  {/* Search Section */}
+                  <div className="pt-6 bg-white">
+                    <div className="relative bg-white">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search products..."
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-gray-900 bg-white placeholder-gray-500 shadow-sm transition-all duration-200"
+                      />
                     </div>
-                  )}
+                  </div>
                 </div>
+
+                {/* Bottom Section - Auth Buttons */}
+                {!user && (
+                  <div className="p-4 border-t border-gray-200 bg-white space-y-3 rounded-bl-2xl">
+                    <button
+                      onClick={() => {
+                        setIsLoginOpen(true)
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-white rounded-lg transition-all duration-200 border border-transparent hover:border-gray-200"
+                    >
+                      Login
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsLoginOpen(true)
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full bg-yellow-400 text-black py-3 px-3 rounded-lg font-semibold hover:bg-yellow-500 hover:shadow-md transform hover:scale-[1.02] transition-all duration-200"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                )}
               </nav>
             </div>
           </div>
