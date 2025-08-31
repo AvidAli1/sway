@@ -14,7 +14,6 @@ import {
   ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
-import LoginModal from "../components/LoginModal"
 
 export default function ProductsPage() {
   const [user, setUser] = useState(null)
@@ -607,9 +606,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-
-      {/* Login Modal */}
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={setUser} />
+      
     </div>
   )
 }

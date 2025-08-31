@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { ArrowLeft, ShoppingCart, X, Filter } from "lucide-react"
 import Link from "next/link"
 import SwipeInterface from "../components/SwipeInterface"
-import LoginModal from "../components/LoginModal"
 
 export default function SwipePage() {
   const [user, setUser] = useState(null)
@@ -418,8 +417,6 @@ export default function SwipePage() {
         </div>
       )}
 
-      {/* Login Modal */}
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={setUser} />
     </div>
   )
 }

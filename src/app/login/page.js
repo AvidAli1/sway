@@ -32,14 +32,15 @@ export default function LoginPage() {
       const user = {
         id: Date.now(),
         email: formData.email,
-        role: "customer",
+        role: "customer", // or "customer"
       }
 
       // Store user data (in real app, this would come from API response)
       localStorage.setItem("user", JSON.stringify(user))
 
-      // Redirect to home
-      router.push("/")
+      // Redirect to brand dashboard
+      router.push("/brandDashboard")
+      
     } catch (error) {
       console.error("Login error:", error)
       alert("An error occurred. Please try again.")
@@ -83,7 +84,7 @@ export default function LoginPage() {
 
       {/* Main Content - Responsive spacing */}
       <div className="px-4 sm:px-6">
-        <div className="w-full max-w-md mx-auto pt-12 sm:pt-32 pb-8 sm:pb-8">
+        <div className="w-full max-w-md mx-auto pt-12 sm:pt-40 pb-8 sm:pb-8">
           {/* Auth Header */}
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
