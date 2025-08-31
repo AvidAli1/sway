@@ -79,7 +79,7 @@ export default function ProductsPage() {
       title: "Casual White Sneakers",
       brand: "Comfort Walk",
       price: 3800,
-      image: "/placeholder.svg?height=400&width=300&text=White+Sneakers",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "shoes",
       sizes: ["7", "8", "9", "10", "11"],
       colors: ["white", "grey"],
@@ -94,7 +94,7 @@ export default function ProductsPage() {
       title: "Oversized T-Shirt",
       brand: "Retro Vibes",
       price: 2200,
-      image: "/placeholder.svg?height=400&width=300&text=Oversized+Tee",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "tops",
       sizes: ["S", "M", "L", "XL", "XXL"],
       colors: ["black", "white", "grey", "yellow"],
@@ -109,7 +109,7 @@ export default function ProductsPage() {
       title: "Slim Fit Jeans",
       brand: "Elite Fashion",
       price: 5800,
-      image: "/placeholder.svg?height=400&width=300&text=Slim+Jeans",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "bottoms",
       sizes: ["28", "30", "32", "34", "36"],
       colors: ["blue", "black"],
@@ -124,7 +124,7 @@ export default function ProductsPage() {
       title: "Summer Floral Dress",
       brand: "Chic Styles",
       price: 4200,
-      image: "/placeholder.svg?height=400&width=300&text=Floral+Dress",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "dresses",
       sizes: ["XS", "S", "M", "L"],
       colors: ["yellow", "white", "pink"],
@@ -139,7 +139,7 @@ export default function ProductsPage() {
       title: "Leather Crossbody Bag",
       brand: "Luxury Goods",
       price: 7500,
-      image: "/placeholder.svg?height=400&width=300&text=Leather+Bag",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "accessories",
       sizes: ["One Size"],
       colors: ["brown", "black"],
@@ -154,7 +154,7 @@ export default function ProductsPage() {
       title: "Athletic Running Shoes",
       brand: "Sport Pro",
       price: 4900,
-      image: "/placeholder.svg?height=400&width=300&text=Running+Shoes",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "shoes",
       sizes: ["7", "8", "9", "10", "11", "12"],
       colors: ["black", "white", "grey"],
@@ -169,7 +169,7 @@ export default function ProductsPage() {
       title: "Wool Blend Coat",
       brand: "Winter Wear",
       price: 8900,
-      image: "/placeholder.svg?height=400&width=300&text=Wool+Coat",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "jackets",
       sizes: ["S", "M", "L", "XL"],
       colors: ["black", "grey", "brown"],
@@ -184,7 +184,7 @@ export default function ProductsPage() {
       title: "Graphic Print Hoodie",
       brand: "Street Art",
       price: 3900,
-      image: "/placeholder.svg?height=400&width=300&text=Graphic+Hoodie",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "tops",
       sizes: ["M", "L", "XL"],
       colors: ["black", "white"],
@@ -199,7 +199,7 @@ export default function ProductsPage() {
       title: "High-Waisted Jeans",
       brand: "Denim Co",
       price: 5200,
-      image: "/placeholder.svg?height=400&width=300&text=High+Waist+Jeans",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "bottoms",
       sizes: ["26", "28", "30", "32"],
       colors: ["blue", "black"],
@@ -214,7 +214,7 @@ export default function ProductsPage() {
       title: "Minimalist Watch",
       brand: "Time Piece",
       price: 6800,
-      image: "/placeholder.svg?height=400&width=300&text=Minimalist+Watch",
+      image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp",
       category: "accessories",
       sizes: ["One Size"],
       colors: ["black", "white", "brown"],
@@ -499,7 +499,7 @@ export default function ProductsPage() {
                   <div
                     className={
                       viewMode === "grid"
-                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4"
                         : "space-y-4"
                     }
                   >

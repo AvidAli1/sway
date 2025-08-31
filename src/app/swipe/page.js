@@ -189,12 +189,12 @@ export default function SwipePage() {
                 className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium hidden sm:block">Back to Home</span>
+                <span className="font-medium hidden sm:block mr-4">Back</span>
               </Link>
             </div>
 
             {/* Center: Logo */}
-            <div className="flex-1 flex justify-left sm:justify-left justify-start ml-4 sm:ml-0">
+            <div className="flex-1 flex justify-left sm:justify-left justify-start sm:ml-0">
               <h1 className="text-xl font-bold text-black">
                 S<span className="text-yellow-400">W</span>AY
               </h1>
