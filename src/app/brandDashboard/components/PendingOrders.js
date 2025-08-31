@@ -162,7 +162,7 @@ export default function PendingOrders() {
           <div className="text-center py-12">
             <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending orders</h3>
-            <p className="text-gray-600">Orders you've accepted will appear here for processing</p>
+            <p className="text-gray-600"> Orders you&apos;ve accepted will appear here for processing</p>
           </div>
         )}
       </div>

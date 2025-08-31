@@ -182,7 +182,7 @@ export default function DeliveredOrders() {
                   <div className="mb-4">
                     <h4 className="font-medium text-gray-900 mb-2">Customer Feedback</h4>
                     {renderStars(order.rating)}
-                    {order.review && <p className="text-sm text-gray-600 mt-2 italic">"{order.review}"</p>}
+                    {order.review && <p className="text-sm text-gray-600 mt-2 italic">&ldquo;{order.review}&rdquo;</p>}
                   </div>
                 </div>
 
