@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Search, ShoppingCart, Heart, Star, ArrowRight, Filter, X, Menu } from "lucide-react"
 import Link from "next/link"
-import LoginModal from "./components/LoginModal"
 
 export default function HomePage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false)
@@ -148,15 +147,15 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="hidden md:flex items-center space-x-3">
-                  <button onClick={() => setIsLoginOpen(true)} className="text-gray-600 hover:text-black font-medium">
+                  <Link href="/login" className="text-gray-600 hover:text-black font-medium">
                     Login
-                  </button>
-                  <button
-                    onClick={() => setIsLoginOpen(true)}
+                  </Link>
+                  <Link
+                    href="/signup"
                     className="bg-yellow-400 text-black px-4 py-2 rounded-full hover:bg-yellow-500 transition-colors font-medium"
                   >
                     Sign Up
-                  </button>
+                  </Link>
                 </div>
               )}
 
@@ -178,7 +177,6 @@ export default function HomePage() {
               className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            {/* Added rounded-bl-xl class here for bottom left corner rounding */}
             <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out rounded-bl-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
@@ -243,24 +241,20 @@ export default function HomePage() {
                 {/* Bottom Section - Auth Buttons */}
                 {!user && (
                   <div className="p-4 border-t border-gray-200 bg-white space-y-3 rounded-bl-2xl">
-                    <button
-                      onClick={() => {
-                        setIsLoginOpen(true)
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full text-left px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-white rounded-lg transition-all duration-200 border border-transparent hover:border-gray-200"
+                    <Link
+                      href="/login"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block w-full text-left px-3 py-3 text-gray-700 hover:text-yellow-600 hover:bg-white rounded-lg transition-all duration-200 border border-transparent hover:border-gray-200"
                     >
                       Login
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsLoginOpen(true)
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full bg-yellow-400 text-black py-3 px-3 rounded-lg font-semibold hover:bg-yellow-500 hover:shadow-md transform hover:scale-[1.02] transition-all duration-200"
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block w-full bg-yellow-400 text-black py-3 px-3 rounded-lg font-semibold hover:bg-yellow-500 hover:shadow-md transform hover:scale-[1.02] transition-all duration-200 text-center"
                     >
                       Sign Up
-                    </button>
+                    </Link>
                   </div>
                 )}
               </nav>
@@ -332,12 +326,12 @@ export default function HomePage() {
                 Start Swiping
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-black transition-colors"
+              <Link
+                href="/signup"
+                className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-black transition-colors text-center"
               >
                 Join SWAY
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -519,8 +513,8 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Transform Your Style?</h2>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Join thousands of fashion enthusiasts who&apos;ve discovered their perfect style through SWAY&apos;s unique swipe
-            experience.
+            Join thousands of fashion enthusiasts who&apos;ve discovered their perfect style through SWAY&apos;s unique
+            swipe experience.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -529,12 +523,12 @@ export default function HomePage() {
             >
               Start Swiping Now
             </Link>
-            <button
-              onClick={() => setIsLoginOpen(true)}
+            <Link
+              href="/signup"
               className="border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-full font-semibold hover:bg-yellow-400 hover:text-black transition-colors"
             >
               Create Account
-            </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -595,9 +589,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
-      {/* Login Modal */}
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={setUser} />
     </div>
   )
 }
