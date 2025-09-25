@@ -204,7 +204,7 @@ export default function SwipePage() {
 
             <div className="flex-1 flex justify-left sm:justify-left justify-start sm:ml-0">
               <h1 className="text-xl font-bold text-black">
-                S<span className="text-yellow-400">W</span>AY
+                <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto mt-2" />
               </h1>
             </div>
 
