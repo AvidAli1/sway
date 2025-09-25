@@ -12,11 +12,11 @@ export default function Reviews() {
       id: 1,
       customer: {
         name: "Emma Brown",
-        avatar: "/placeholder.svg?height=40&width=40&text=EB",
+        avatar: "/brand_dashboard/emma_brown.jpg",
       },
       product: {
         name: "Summer Dress",
-        image: "/placeholder.svg?height=60&width=60&text=Dress",
+        image: "/products_page/summer_floral_dress.jpg",
       },
       rating: 5,
       review:
@@ -30,11 +30,11 @@ export default function Reviews() {
       id: 2,
       customer: {
         name: "Hassan Khan",
-        avatar: "/placeholder.svg?height=40&width=40&text=HK",
+        avatar: "/brand_dashboard/hassan_khan.jpg",
       },
       product: {
         name: "Designer Jeans",
-        image: "/placeholder.svg?height=60&width=60&text=Jeans",
+        image: "/landing_page_products/designer_jeans.jpg",
       },
       rating: 4,
       review:
@@ -48,11 +48,11 @@ export default function Reviews() {
       id: 3,
       customer: {
         name: "Aisha Ahmed",
-        avatar: "/placeholder.svg?height=40&width=40&text=AA",
+        avatar: "/brand_dashboard/aisha_ahmed.jpg",
       },
       product: {
         name: "Premium Cotton Hoodie",
-        image: "/placeholder.svg?height=60&width=60&text=Hoodie",
+        image: "/products_page/premium_hoodie.jpg",
       },
       rating: 5,
       review:
@@ -66,11 +66,11 @@ export default function Reviews() {
       id: 4,
       customer: {
         name: "Omar Sheikh",
-        avatar: "/placeholder.svg?height=40&width=40&text=OS",
+        avatar: "/brand_dashboard/omar_sheikh.jpg",
       },
       product: {
         name: "Casual T-Shirt",
-        image: "/placeholder.svg?height=60&width=60&text=TShirt",
+        image: "/products_page/oversized_tshirt.jpg",
       },
       rating: 3,
       review:
@@ -84,11 +84,11 @@ export default function Reviews() {
       id: 5,
       customer: {
         name: "Zara Khan",
-        avatar: "/placeholder.svg?height=40&width=40&text=ZK",
+        avatar: "/brand_dashboard/zara_khan.jpg",
       },
       product: {
         name: "Vintage Denim Jacket",
-        image: "/placeholder.svg?height=60&width=60&text=Jacket",
+        image: "/products_page/vintage_denim_jacket.jpg",
       },
       rating: 5,
       review:

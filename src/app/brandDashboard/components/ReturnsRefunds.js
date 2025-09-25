@@ -18,7 +18,7 @@ export default function ReturnsRefunds() {
       },
       product: {
         name: "Premium Cotton Hoodie",
-        image: "/placeholder.svg?height=60&width=60&text=Hoodie",
+        image: "/products_page/premium_hoodie.jpg",
         price: 4500,
         quantity: 1,
       },
@@ -29,8 +29,8 @@ export default function ReturnsRefunds() {
       status: "pending",
       type: "exchange",
       images: [
-        "/placeholder.svg?height=100&width=100&text=Photo1",
-        "/placeholder.svg?height=100&width=100&text=Photo2",
+        "/brand_dashboard/size_too_small1.jpg",
+        "/brand_dashboard/size_too_small2.jpg",
       ],
     },
     {
@@ -43,7 +43,7 @@ export default function ReturnsRefunds() {
       },
       product: {
         name: "Designer Jeans",
-        image: "/placeholder.svg?height=60&width=60&text=Jeans",
+        image: "/landing_page_products/designer_jeans.jpg",
         price: 5800,
         quantity: 1,
       },
@@ -53,7 +53,7 @@ export default function ReturnsRefunds() {
       requestDate: "2024-01-13T15:45:00Z",
       status: "approved",
       type: "refund",
-      images: ["/placeholder.svg?height=100&width=100&text=Damage"],
+      images: ["/brand_dashboard/tear_in_jeans.jpg"],
     },
     {
       id: "RET003",
@@ -65,7 +65,7 @@ export default function ReturnsRefunds() {
       },
       product: {
         name: "Casual T-Shirt",
-        image: "/placeholder.svg?height=60&width=60&text=TShirt",
+        image: "/products_page/oversized_tshirt.jpg",
         price: 2200,
         quantity: 2,
       },
@@ -74,7 +74,7 @@ export default function ReturnsRefunds() {
       requestDate: "2024-01-12T09:20:00Z",
       status: "processing",
       type: "exchange",
-      images: ["/placeholder.svg?height=100&width=100&text=Wrong"],
+      images: ["/brand_dashboard/wrong_colour.jpg"],
     },
   ])
 

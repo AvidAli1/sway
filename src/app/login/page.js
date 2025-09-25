@@ -24,27 +24,38 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    try {
-      // In a real app, you would make API calls here
-      console.log("Login Data:", formData)
+    // Hardcoded demo credentials
+    const customerEmail = "customer@email.com"
+    const brandEmail = "brand@email.com"
+    const demoPassword = "123" // any placeholder password
 
-      // Mock successful login
+    if (
+      formData.email === customerEmail && formData.password === demoPassword
+    ) {
       const user = {
         id: Date.now(),
         email: formData.email,
-        role: "customer", // or "customer"
+        role: "customer",
       }
-
-      // Store user data (in real app, this would come from API response)
       localStorage.setItem("user", JSON.stringify(user))
-
-      // Redirect to brand dashboard
-      router.push("/brandDashboard")
-      
-    } catch (error) {
-      console.error("Login error:", error)
-      alert("An error occurred. Please try again.")
+      router.push("/customerDashboard")
+      return
     }
+    if (
+      formData.email === brandEmail && formData.password === demoPassword
+    ) {
+      const user = {
+        id: Date.now(),
+        email: formData.email,
+        role: "brand",
+      }
+      localStorage.setItem("user", JSON.stringify(user))
+      router.push("/brandDashboard")
+      return
+    }
+    // Invalid credentials
+    alert("Invalid email or password. Try customer@email.com or brand@email.com with password 'password'.")
+    return
   }
 
   return (
@@ -59,7 +70,7 @@ export default function LoginPage() {
           </Link>
 
           <h1 className="text-xl sm:text-2xl font-bold text-black absolute left-[48%] sm:left-[50%] transform -translate-x-1/2">
-            S<span className="text-yellow-400">W</span>AY
+            <img src="/logo2.png" alt="Logo" className="h-9 w-auto inline" />
           </h1>
 
           {/* Login/Signup Toggle - Responsive */}
