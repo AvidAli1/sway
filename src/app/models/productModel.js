@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import { Princess_Sofia } from "next/font/google";
-
 
 const productSchema = new mongoose.Schema({
     name: {
@@ -96,13 +94,26 @@ const productSchema = new mongoose.Schema({
     },
     images: [
         {
-            type: String,
-            trim: true,
+            HD: {
+                type: String,
+                trim: true,
+
+            },
+            SD: {
+                type: String,
+                trim: true,
+            }
         },
     ],
     thumbnail: {
-        type: String,
-        trim: true,
+        HD: {
+            type: String,
+            trim: true,
+        },
+        SD: {
+            type: String,
+            trim: true,
+        }
     },
     gender: {
         type: String,
@@ -143,3 +154,7 @@ const productSchema = new mongoose.Schema({
         default: "active",
     },
 });
+
+const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
+
+export default Product;
