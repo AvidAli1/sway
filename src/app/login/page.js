@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -24,38 +25,51 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Hardcoded demo credentials
-    const customerEmail = "customer@email.com"
-    const brandEmail = "brand@email.com"
-    const demoPassword = "123" // any placeholder password
+    if (!formData.email || !formData.password) {
+      alert("Please enter email and password.")
+      return
+    }
 
-    if (
-      formData.email === customerEmail && formData.password === demoPassword
-    ) {
-      const user = {
-        id: Date.now(),
-        email: formData.email,
-        role: "customer",
+    try {
+      setLoading(true)
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        // Prefer explicit user object returned by API
+        const user = data.user || data
+        try {
+          localStorage.setItem("user", JSON.stringify(user))
+        } catch (err) {
+          // ignore localStorage errors
+          console.warn("Could not save user to localStorage", err)
+        }
+
+        const role = (user && user.role) || data.role || "customer"
+        if (role === "brand") {
+          router.push("/brandDashboard")
+        } else {
+          router.push("/customerDashboard")
+        }
+        return
       }
-      localStorage.setItem("user", JSON.stringify(user))
-      router.push("/customerDashboard")
-      return
+
+      const msg = data?.error || data?.message || "Invalid email or password"
+      alert(msg)
+    } catch (error) {
+      console.error("Login error:", error)
+      alert("An error occurred while logging in. Please try again.")
+    } finally {
+      setLoading(false)
     }
-    if (
-      formData.email === brandEmail && formData.password === demoPassword
-    ) {
-      const user = {
-        id: Date.now(),
-        email: formData.email,
-        role: "brand",
-      }
-      localStorage.setItem("user", JSON.stringify(user))
-      router.push("/brandDashboard")
-      return
-    }
-    // Invalid credentials
-    alert("Invalid email or password. Try customer@email.com or brand@email.com with password 'password'.")
-    return
   }
 
   return (
