@@ -32,6 +32,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
   const [notificationMessage, setNotificationMessage] = useState("")
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendFeedback, setResendFeedback] = useState(null)
 
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
@@ -101,7 +103,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top notification for success message (drops from above) */}
       <div
         aria-live="polite"
         className="fixed left-1/2 top-4 z-50 w-full max-w-xl px-4"
@@ -110,22 +111,53 @@ export default function SignupPage() {
         {showNotification && (
           <div className="bg-white border border-green-200 shadow-md rounded-lg p-4 flex items-start gap-4">
             <div className="flex-1">
+              {resendFeedback && <div className="mt-3 text-sm text-gray-700">{resendFeedback}</div>}
               <div className="font-semibold text-green-800">Signup successful</div>
               <div className="text-sm text-green-700 mt-1">{notificationMessage}</div>
               <div className="mt-3 flex gap-2">
+                {/* Top notification for success message (drops from above) */}
                 <button
                   type="button"
-                  onClick={() => {
-                    // Try to close the window (may be blocked by browser if not opened by script)
+                  onClick={async () => {
+                    // call resend verification API using saved pending email or current form email
+                    const emailToResend = (() => {
+                      try {
+                        return localStorage.getItem("pending_verification_email") || formData.email
+                      } catch (e) {
+                        return formData.email
+                      }
+                    })()
+                    if (!emailToResend) {
+                      setResendFeedback("No email found to resend verification to.")
+                      return
+                    }
+
                     try {
-                      window.close()
-                    } catch (e) {
-                      console.warn("window.close failed", e)
+                      setResendLoading(true)
+                      setResendFeedback(null)
+                      const res = await fetch("/api/auth/resend-verification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: emailToResend }),
+                      })
+                      const data = await res.json()
+                      if (res.ok) {
+                        setResendFeedback(data?.message || "Verification email resent. Please check your inbox.")
+                        try { localStorage.setItem("pending_verification_email", emailToResend) } catch (e) { }
+                      } else {
+                        setResendFeedback(data?.error || data?.message || "Failed to resend verification email.")
+                      }
+                    } catch (err) {
+                      console.error(err)
+                      setResendFeedback("An error occurred. Please try again.")
+                    } finally {
+                      setResendLoading(false)
                     }
                   }}
-                  className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+                  disabled={resendLoading}
+                  className={`px-3 py-1 rounded bg-yellow-50 hover:bg-yellow-100 text-sm text-yellow-700 ${resendLoading ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
-                  Close window
+                  {resendLoading ? "Sending..." : "Resend verification email"}
                 </button>
                 <button
                   type="button"
@@ -346,9 +378,8 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${
-                loading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
+              className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
             >
               {loading ? "Creating..." : "Create Customer Account"}
             </button>
