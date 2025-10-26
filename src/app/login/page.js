@@ -44,16 +44,31 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (res.ok) {
-        // Prefer explicit user object returned by API
-        const user = data.user || data
+        // Log full response for debugging (user + customer + token)
+        // console.log("Login response:", data)
+        const sessionUser = data.user || data
+        // Normalize session object we store so other components can always read session.user and session.customer
+        const session = { ...data, user: sessionUser, customer: data.customer || data.customerData || null }
         try {
-          localStorage.setItem("user", JSON.stringify(user))
+          localStorage.setItem("user", JSON.stringify(session))
         } catch (err) {
-          // ignore localStorage errors
-          console.warn("Could not save user to localStorage", err)
+          console.warn("Could not save session to localStorage", err)
         }
 
-        const role = (user && user.role) || data.role || "customer"
+        // Save token if API returns one (common keys)
+        const token = data?.token || data?.accessToken || data?.jwt || sessionUser?.token || session?.token
+        if (token) {
+          try {
+            localStorage.setItem("authToken", token)
+            // also store token inside the saved session for convenience
+            const merged = { ...session, token }
+            localStorage.setItem("user", JSON.stringify(merged))
+          } catch (err) {
+            console.warn("Could not save auth token", err)
+          }
+        }
+
+        const role = sessionUser?.role || data?.role || "customer"
         if (role === "brand") {
           router.push("/brandDashboard")
         } else {
@@ -168,9 +183,12 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+              disabled={loading}
+              className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${
+                loading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
             >
-              Sign In
+              {loading ? "Signing in....." : "Sign In"}
             </button>
           </form>
 

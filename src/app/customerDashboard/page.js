@@ -46,9 +46,12 @@ export default function CustomerDashboard() {
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (userData) {
-      const parsedUser = JSON.parse(userData)
-      if (parsedUser.role === "customer") {
-        setUser(parsedUser)
+      const parsed = JSON.parse(userData)
+      // parsed may be either the raw user object or a full session { user, customer, token }
+      const sessionUser = parsed.user || parsed
+      if (sessionUser.role === "customer") {
+        // prefer passing the plain user object to the dashboard
+        setUser(sessionUser)
       } else {
         // Redirect non-customer users
         router.push("/")

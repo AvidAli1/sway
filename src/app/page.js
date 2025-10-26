@@ -57,6 +57,19 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Read session from localStorage so landing header shows avatar/logout when logged in
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user")
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      const sessionUser = parsed?.user || parsed
+      if (sessionUser) setUser(sessionUser)
+    } catch (e) {
+      // ignore
+    }
+  }, [])
+
   // Mock featured products data
   const featuredProducts = [
     {
@@ -202,10 +215,22 @@ export default function HomePage() {
 
               {/* Auth Buttons */}
               {user ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
                     <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
                   </div>
+                  <span className="hidden md:block text-sm font-medium">{user.name}</span>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem("user")
+                      localStorage.removeItem("authToken")
+                      setUser(null)
+                      // stay on landing page but update UI
+                    }}
+                    className="text-gray-600 hover:text-red-600"
+                  >
+                    Logout
+                  </button>
                 </div>
               ) : (
                 <div className="hidden md:flex items-center space-x-3">

@@ -38,193 +38,60 @@ export default function ProductsPage() {
     inStock: false,
   })
 
-  // Comprehensive product data
-  const [allProducts] = useState([
-    {
-      id: 1,
-      title: "Premium Cotton Hoodie",
-      brand: "Urban Style",
-      price: 4500,
-      originalPrice: 5500,
-      image: "/products_page/premium_hoodie.jpg",
-      category: "tops",
-      sizes: ["S", "M", "L", "XL"],
-      colors: ["yellow", "black", "white"],
-      rating: 4.8,
-      reviews: 124,
-      description: "Comfortable premium cotton hoodie perfect for casual wear",
-      inStock: true,
-      isSponsored: true,
-      tags: ["trending", "new"],
-    },
-    {
-      id: 2,
-      title: "Vintage Denim Jacket",
-      brand: "Street Wear",
-      price: 6200,
-      image: "/products_page/vintage_denim_jacket.jpg",
-      category: "jackets",
-      sizes: ["M", "L", "XL"],
-      colors: ["blue", "black"],
-      rating: 4.6,
-      reviews: 89,
-      description: "Classic vintage-style denim jacket with modern fit",
-      inStock: true,
-      isSponsored: true,
-      tags: ["vintage", "classic"],
-    },
-    {
-      id: 3,
-      title: "Casual White Sneakers",
-      brand: "Comfort Walk",
-      price: 3800,
-      image: "/products_page/casual_white_sneakers.jpg",
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11"],
-      colors: ["white", "grey"],
-      rating: 4.7,
-      reviews: 156,
-      description: "Comfortable everyday sneakers with premium cushioning",
-      inStock: true,
-      tags: ["comfort", "casual"],
-    },
-    {
-      id: 4,
-      title: "Oversized T-Shirt",
-      brand: "Retro Vibes",
-      price: 2200,
-      image: "/products_page/oversized_tshirt.jpg",
-      category: "tops",
-      sizes: ["S", "M", "L", "XL", "XXL"],
-      colors: ["black", "white", "grey", "yellow"],
-      rating: 4.5,
-      reviews: 203,
-      description: "Trendy oversized t-shirt with soft cotton blend",
-      inStock: true,
-      tags: ["oversized", "trendy"],
-    },
-    {
-      id: 5,
-      title: "Slim Fit Jeans",
-      brand: "Elite Fashion",
-      price: 5800,
-      image: "/products_page/slim_fit_jeans.jpg",
-      category: "bottoms",
-      sizes: ["28", "30", "32", "34", "36"],
-      colors: ["blue", "black"],
-      rating: 4.9,
-      reviews: 78,
-      description: "Premium slim fit jeans with stretch comfort",
-      inStock: true,
-      tags: ["premium", "slim-fit"],
-    },
-    {
-      id: 6,
-      title: "Summer Floral Dress",
-      brand: "Chic Styles",
-      price: 4200,
-      image: "/products_page/summer_floral_dress.jpg",
-      category: "dresses",
-      sizes: ["XS", "S", "M", "L"],
-      colors: ["yellow", "white", "pink"],
-      rating: 4.4,
-      reviews: 92,
-      description: "Beautiful floral print dress perfect for summer",
-      inStock: true,
-      tags: ["summer", "floral"],
-    },
-    {
-      id: 7,
-      title: "Leather Crossbody Bag",
-      brand: "Luxury Goods",
-      price: 7500,
-      image: "/products_page/leather_crossbody_bag.jpg",
-      category: "accessories",
-      sizes: ["One Size"],
-      colors: ["brown", "black"],
-      rating: 4.8,
-      reviews: 45,
-      description: "Premium leather crossbody bag with multiple compartments",
-      inStock: false,
-      tags: ["luxury", "leather"],
-    },
-    {
-      id: 8,
-      title: "Athletic Running Shoes",
-      brand: "Sport Pro",
-      price: 4900,
-      image: "/products_page/athletic_running_shoes.jpg",
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11", "12"],
-      colors: ["black", "white", "grey"],
-      rating: 4.6,
-      reviews: 134,
-      description: "High-performance running shoes with advanced cushioning",
-      inStock: true,
-      tags: ["athletic", "performance"],
-    },
-    {
-      id: 9, title: "Floral Button-Up Shirt",
-      brand: "Tropical Wear",
-      price: 3500,
-      image: ["/virtual_tryon/buttonup_shirt.jpg"],
-      category: "tops",
-      sizes: ["S", "M", "L", "XL"],
-      colors: ["white", "multicolor"],
-      rating: 4.6,
-      reviews: 54,
-      description: "Lightweight floral button-up shirt perfect for summer. Features a relaxed fit with breathable fabric and tropical-inspired print.",
-      specifications: { Material: "100% Cotton", Fit: "Relaxed Fit", Care: "Machine wash cold, hang dry", Origin: "Made in Pakistan", Style: "Short-Sleeve Casual Shirt", },
-      inStock: true,
-      stockCount: 20,
-      tags: ["summer", "casual", "floral"],
-    },
-    {
-      id: 10,
-      title: "Graphic Print Hoodie",
-      brand: "Street Art",
-      price: 3900,
-      image: "/products_page/graphic_print_hoodie.jpg",
-      category: "tops",
-      sizes: ["M", "L", "XL"],
-      colors: ["black", "white"],
-      rating: 4.3,
-      reviews: 88,
-      description: "Unique graphic print hoodie with artistic design",
-      inStock: true,
-      tags: ["graphic", "artistic"],
-    },
-    {
-      id: 11,
-      title: "High-Waisted Jeans",
-      brand: "Denim Co",
-      price: 5200,
-      image: "/products_page/high_waisted_jeans.jpg",
-      category: "bottoms",
-      sizes: ["26", "28", "30", "32"],
-      colors: ["blue", "black"],
-      rating: 4.6,
-      reviews: 112,
-      description: "Flattering high-waisted jeans with vintage wash",
-      inStock: true,
-      tags: ["high-waist", "vintage"],
-    },
-    {
-      id: 12,
-      title: "Minimalist Watch",
-      brand: "Time Piece",
-      price: 6800,
-      image: "/products_page/minimalistic_watch.jpg",
-      category: "accessories",
-      sizes: ["One Size"],
-      colors: ["black", "white", "brown"],
-      rating: 4.9,
-      reviews: 234,
-      description: "Elegant minimalist watch with leather strap",
-      inStock: true,
-      tags: ["minimalist", "elegant"],
-    },
-  ])
+  // Product data loaded from backend
+  const [allProducts, setAllProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [productsError, setProductsError] = useState(null)
+
+  // Fetch products from backend API
+  useEffect(() => {
+    let mounted = true
+    const fetchProducts = async () => {
+      setProductsLoading(true)
+      setProductsError(null)
+      try {
+        const res = await fetch('/api/customer/products?page=1&limit=12')
+        if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`)
+        const data = await res.json()
+        if (!mounted) return
+        setAllProducts((data && Array.isArray(data.products)) ? data.products.map(p => ({
+          // normalize backend shape to the shape used by the UI where possible
+          id: p._id,
+          title: p.name,
+          brand: (p.brand && p.brand.name) || (p.brand || ''),
+          price: p.price,
+          originalPrice: p.originalPrice,
+          image: (p.thumbnail && p.thumbnail.SD) || (p.images && p.images[0] && p.images[0].SD) || '/placeholder.svg',
+          category: p.category,
+          sizes: p.sizes || [],
+          colors: p.colors || [],
+          rating: p.ratings || 0,
+          reviews: p.numReviews || 0,
+          description: p.description || '',
+          inStock: !!p.inStock,
+          isSponsored: !!p.isFeatured,
+          tags: p.tags || [],
+        })) : [])
+
+        // If API returns filters, seed UI filters
+        if (data && data.filters) {
+          setFilters((prev) => ({
+            ...prev,
+            categories: data.filters.categories || prev.categories,
+            // priceRange min/max
+            priceRange: data.filters.priceRange ? [data.filters.priceRange.minPrice || prev.priceRange[0], data.filters.priceRange.maxPrice || prev.priceRange[1]] : prev.priceRange,
+          }))
+        }
+      } catch (err) {
+        console.error(err)
+        if (mounted) setProductsError(err.message)
+      } finally {
+        if (mounted) setProductsLoading(false)
+      }
+    }
+    fetchProducts()
+    return () => { mounted = false }
+  }, [])
 
   const [filteredProducts, setFilteredProducts] = useState(allProducts)
 
@@ -359,6 +226,18 @@ export default function ProductsPage() {
   const categories = [...new Set(allProducts.map((p) => p.category))]
   const colors = [...new Set(allProducts.flatMap((p) => p.colors))]
 
+  // Initialize user from localStorage so header shows avatar/logout when logged in
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user")
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      const sessionUser = parsed?.user || parsed
+      if (sessionUser) setUser(sessionUser)
+    } catch (e) {
+      // ignore
+    }
+  }, [])
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -400,8 +279,23 @@ export default function ProductsPage() {
               </button>
 
               {user ? (
-                <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
+                  </div>
+                  <span className="hidden md:block text-sm font-medium">{user.name}</span>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem("user")
+                      localStorage.removeItem("authToken")
+                      setUser(null)
+                      // optional: close login modal if open
+                      setIsLoginOpen(false)
+                    }}
+                    className="text-gray-600 hover:text-red-600"
+                  >
+                    Logout
+                  </button>
                 </div>
               ) : (
                 <button
