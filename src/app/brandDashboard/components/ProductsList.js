@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Edit, Trash2, Eye, Plus, Search, Package } from "lucide-react"
 import Link from "next/link"
 
@@ -8,82 +8,60 @@ export default function ProductsList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
 
-  // Mock products data - in real app, this would come from API
-  const [products] = useState([
-    {
-      id: 1,
-      title: "Premium Cotton Hoodie",
-      price: 4500,
-      originalPrice: 5500,
-      image: "/products_page/premium_hoodie.jpg",
-      category: "Hoodies",
-      stock: 25,
-      status: "active",
-      sales: 45,
-      rating: 4.8,
-      reviews: 12,
-    },
-    {
-      id: 2,
-      title: "Vintage Denim Jacket",
-      price: 6200,
-      image: "/products_page/vintage_denim_jacket.jpg",
-      category: "Jackets",
-      stock: 15,
-      status: "active",
-      sales: 32,
-      rating: 4.6,
-      reviews: 8,
-    },
-    {
-      id: 3,
-      title: "Casual T-Shirt",
-      price: 2200,
-      image: "/products_page/oversized_tshirt.jpg",
-      category: "T-Shirts",
-      stock: 0,
-      status: "out_of_stock",
-      sales: 78,
-      rating: 4.5,
-      reviews: 23,
-    },
-    {
-      id: 4,
-      title: "Designer Jeans",
-      price: 5800,
-      image: "/landing_page_products/designer_jeans.jpg",
-      category: "Jeans",
-      stock: 8,
-      status: "low_stock",
-      sales: 56,
-      rating: 4.9,
-      reviews: 15,
-    },
-    {
-      id: 5,
-      title: "Summer Dress",
-      price: 4200,
-      image: "/products_page/summer_floral_dress.jpg",
-      category: "Dresses",
-      stock: 30,
-      status: "active",
-      sales: 23,
-      rating: 4.4,
-      reviews: 7,
-    },
-    {
-      id: 6,
-      title: "Graphic Print Hoodie",
-      price: 8900,
-      image: "/products_page/graphic_print_hoodie.jpg",
-      category: "Jackets",
-      stock: 12,
-      status: "active",
-      sales: 18,
-      rating: 4.7,
-      reviews: 5,
-    },
-  ])
+  // Products loaded from backend for this brand
+  const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [productsError, setProductsError] = useState(null)
+
+  useEffect(() => {
+    let mounted = true
+    const fetchProducts = async () => {
+      setProductsLoading(true)
+      setProductsError(null)
+      try {
+        // include auth token if available
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+        const res = await fetch('/api/brand/products', {
+          method: 'GET',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          credentials: 'include',
+        })
+
+        if (!res.ok) throw new Error(`Failed to load products: ${res.status}`)
+
+        const data = await res.json()
+        if (!mounted) return
+
+        if (data && Array.isArray(data.products)) {
+          const normalized = data.products.map((p) => ({
+            id: p._id,
+            title: p.name,
+            price: p.price,
+            originalPrice: p.originalPrice,
+            image: (p.thumbnail && p.thumbnail.SD) || (p.images && p.images[0] && p.images[0].SD) || '/placeholder.svg',
+            category: p.category || '',
+            stock: p.stock != null ? p.stock : (p.inStock ? 1 : 0),
+            status: p.status || (p.inStock ? 'active' : 'out_of_stock'),
+            sales: p.sales || 0,
+            rating: p.ratings || 0,
+            reviews: p.numReviews || 0,
+            raw: p,
+          }))
+          setProducts(normalized)
+        } else {
+          setProducts([])
+        }
+      } catch (err) {
+        console.error(err)
+        if (mounted) setProductsError(err.message)
+      } finally {
+        if (mounted) setProductsLoading(false)
+      }
+    }
+
+    fetchProducts()
+    return () => { mounted = false }
+  }, [])
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -114,7 +92,7 @@ export default function ProductsList() {
             <p className="text-gray-600">Manage your product inventory</p>
           </div>
           <Link
-            href="/productUpload"
+            href="/uploadProduct"
             className="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center gap-2 font-medium w-fit"
           >
             <Plus className="w-4 h-4" />
@@ -149,7 +127,15 @@ export default function ProductsList() {
 
       {/* Products Grid */}
       <div className="p-6">
-        {filteredProducts.length > 0 ? (
+        {productsLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+          </div>
+        ) : productsError ? (
+          <div className="text-center py-12">
+            <p className="text-red-600">Error loading products: {productsError}</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
               <div
@@ -220,7 +206,7 @@ export default function ProductsList() {
                 : "Start by adding your first product"}
             </p>
             <Link
-              href="/productUpload"
+              href="/uploadProduct"
               className="bg-yellow-400 text-black px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors font-medium inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />

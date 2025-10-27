@@ -45,9 +45,11 @@ export default function BrandDashboard() {
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (userData) {
-      const parsedUser = JSON.parse(userData)
-      if (parsedUser.role === "brand" || parsedUser.role === "customer") {
-        setUser(parsedUser)
+      const parsed = JSON.parse(userData)
+      // support both old shape (raw user) and new saved session shape ({ user, token, ... })
+      const sessionUser = parsed?.user || parsed
+      if (sessionUser?.role === "brand" || sessionUser?.role === "customer") {
+        setUser(sessionUser)
       } else {
         // Redirect non-brand users
         router.push("/")

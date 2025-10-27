@@ -80,6 +80,9 @@ export async function POST(request) {
       email: email.toLowerCase(),
       password: hashedPassword,
       phone,
+      // invited brand owners are considered verified
+      isEmailVerified: true,
+      emailVerifiedAt: new Date(),
       role: 'brand',
     });
 

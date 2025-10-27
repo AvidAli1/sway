@@ -222,29 +222,45 @@ export async function POST(request) {
     const thumbnailFiles = formData.getAll('thumbnail');
     const imageFiles = formData.getAll('images');
 
+    // Process thumbnail and product images. Skip problematic files but record their names.
+    const failedImages = []
+
     // Process thumbnail
     if (thumbnailFiles && thumbnailFiles.length > 0 && thumbnailFiles[0].size > 0) {
       const thumbnailFile = thumbnailFiles[0];
-      const thumbnailBuffer = await thumbnailFile.arrayBuffer();
-      const thumbnailResult = await uploadProductImages(
-        Buffer.from(thumbnailBuffer),
-        thumbnailFile.name,
-        thumbnailFile.type
-      );
-      productData.thumbnail = thumbnailResult;
+      try {
+        const thumbnailBuffer = await thumbnailFile.arrayBuffer();
+        const thumbnailResult = await uploadProductImages(
+          Buffer.from(thumbnailBuffer),
+          thumbnailFile.name,
+          thumbnailFile.type
+        );
+        productData.thumbnail = thumbnailResult;
+      } catch (err) {
+        console.error('Thumbnail upload failed, skipping thumbnail:', thumbnailFile.name, err);
+        failedImages.push(thumbnailFile.name || 'thumbnail');
+        productData.thumbnail = null;
+      }
     }
 
     // Process product images
     if (imageFiles && imageFiles.length > 0) {
       for (const imageFile of imageFiles) {
         if (imageFile.size > 0) {
-          const imageBuffer = await imageFile.arrayBuffer();
-          const imageResult = await uploadProductImages(
-            Buffer.from(imageBuffer),
-            imageFile.name,
-            imageFile.type
-          );
-          images.push(imageResult);
+          try {
+            const imageBuffer = await imageFile.arrayBuffer();
+            const imageResult = await uploadProductImages(
+              Buffer.from(imageBuffer),
+              imageFile.name,
+              imageFile.type
+            );
+            images.push(imageResult);
+          } catch (err) {
+            console.error('Error processing and uploading product image (skipping):', imageFile.name, err);
+            failedImages.push(imageFile.name || 'unknown');
+            // continue with next image
+            continue;
+          }
         }
       }
     }
@@ -282,11 +298,21 @@ export async function POST(request) {
     await product.populate('brand', 'name businessEmail');
     console.log('Product populated, sending response');
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       message: 'Product created successfully',
       product
-    }, { status: 201 });
+    };
+
+    if (failedImages.length > 0) {
+      responsePayload.warnings = {
+        message: 'Some images were skipped due to processing/format errors',
+        files: failedImages
+      };
+      console.log('Some images failed to process:', failedImages);
+    }
+
+    return NextResponse.json(responsePayload, { status: 201 });
 
   } catch (error) {
     console.error('Error creating product:', error);
