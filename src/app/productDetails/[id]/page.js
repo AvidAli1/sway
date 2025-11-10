@@ -21,351 +21,94 @@ import { useParams } from "next/navigation"
 
 export default function ProductDetailPage() {
   const params = useParams()
-  const productId = Number.parseInt(params.id)
+  const productId = params.id
+
+  const [product, setProduct] = useState(null)
+  const [relatedProducts, setRelatedProducts] = useState([])
+  const [similarProducts, setSimilarProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [cartItems, setCartItems] = useState([])
   const [selectedColor, setSelectedColor] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [quantity, setQuantity] = useState(1)
-  const [activeTab, setActiveTab] = useState("description")
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const [cartItems, setCartItems] = useState([])
+  const [activeTab, setActiveTab] = useState("description")
   const [user, setUser] = useState(null)
 
-  // All products data (same as in your products page)
-  const allProducts = [
-    {
-      id: 1,
-      title: "Premium Cotton Hoodie",
-      brand: "Urban Style",
-      price: 4500,
-      originalPrice: 5500,
-      images: [
-        "/products_page/premium_hoodie.jpg",
-        "/products_page/premium_hoodie_2.jpg",
-        "/products_page/premium_hoodie_3.jpg",
-        "/products_page/premium_hoodie_4.jpg",
-      ],
-      category: "tops",
-      sizes: ["S", "M", "L", "XL"],
-      colors: ["yellow", "black", "white"],
-      rating: 4.8,
-      reviews: 124,
-      description:
-        "Comfortable premium cotton hoodie perfect for casual wear. Made from 100% organic cotton with a soft fleece lining for ultimate comfort. Features a spacious kangaroo pocket and adjustable drawstring hood.",
-      specifications: {
-        Material: "100% Organic Cotton",
-        Fit: "Regular Fit",
-        Care: "Machine wash cold, tumble dry low",
-        Origin: "Made in Pakistan",
-        Weight: "450 GSM",
-      },
-      inStock: true,
-      stockCount: 15,
-      isSponsored: true,
-      tags: ["trending", "new"],
-    },
-    {
-      id: 2,
-      title: "Vintage Denim Jacket",
-      brand: "Street Wear",
-      price: 6200,
-      images: [
-        "/products_page/vintage_denim_jacket.jpg",
-        "/products_page/vintage_denim_jacket_2.jpg",
-        "/products_page/vintage_denim_jacket_3.jpg",
-      ],
-      category: "jackets",
-      sizes: ["M", "L", "XL"],
-      colors: ["blue", "black"],
-      rating: 4.6,
-      reviews: 89,
-      description:
-        "Classic vintage-style denim jacket with modern fit. Features distressed detailing and classic button closure. Perfect for layering over any outfit.",
-      specifications: {
-        Material: "100% Cotton Denim",
-        Fit: "Slim Fit",
-        Care: "Machine wash cold, hang dry",
-        Origin: "Made in Pakistan",
-        Weight: "12 oz Denim",
-      },
-      inStock: true,
-      stockCount: 8,
-      isSponsored: true,
-      tags: ["vintage", "classic"],
-    },
-    {
-      id: 3,
-      title: "Casual White Sneakers",
-      brand: "Comfort Walk",
-      price: 3800,
-      images: [
-        "/products_page/casual_white_sneakers.jpg",
-        "/products_page/casual_white_sneakers_2.jpg",
-        "/products_page/casual_white_sneakers_3.jpg",
-      ],
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11"],
-      colors: ["white", "grey"],
-      rating: 4.7,
-      reviews: 156,
-      description:
-        "Comfortable everyday sneakers with premium cushioning. Features breathable mesh upper and durable rubber outsole.",
-      specifications: {
-        Material: "Synthetic Leather & Mesh",
-        Sole: "Rubber Outsole",
-        Care: "Wipe clean with damp cloth",
-        Origin: "Made in Pakistan",
-        Type: "Casual Sneakers",
-      },
-      inStock: true,
-      stockCount: 22,
-      tags: ["comfort", "casual"],
-    },
-    // Add more products with similar structure...
-    {
-      id: 4,
-      title: "Oversized T-Shirt",
-      brand: "Retro Vibes",
-      price: 2200,
-      images: ["/products_page/oversized_tshirt.jpg"],
-      category: "tops",
-      sizes: ["S", "M", "L", "XL", "XXL"],
-      colors: ["black", "white", "grey", "yellow"],
-      rating: 4.5,
-      reviews: 203,
-      description: "Trendy oversized t-shirt with soft cotton blend. Perfect for a relaxed, casual look.",
-      specifications: {
-        Material: "60% Cotton, 40% Polyester",
-        Fit: "Oversized",
-        Care: "Machine wash cold",
-        Origin: "Made in Pakistan",
-        Weight: "180 GSM",
-      },
-      inStock: true,
-      stockCount: 30,
-      tags: ["oversized", "trendy"],
-    },
-    {
-      id: 5,
-      title: "Slim Fit Jeans",
-      brand: "Elite Fashion",
-      price: 5800,
-      images: [
-        "/products_page/slim_fit_jeans.jpg",
-        "/products_page/slim_fit_jeans_2.jpg",
-        "/products_page/slim_fit_jeans_3.jpg",
-      ],
-      category: "bottoms",
-      sizes: ["28", "30", "32", "34", "36"],
-      colors: ["blue", "black"],
-      rating: 4.9,
-      reviews: 78,
-      description: "Premium slim fit jeans with stretch comfort. Made from high-quality denim with a modern cut.",
-      specifications: {
-        Material: "98% Cotton, 2% Elastane",
-        Fit: "Slim Fit",
-        Care: "Machine wash cold, hang dry",
-        Origin: "Made in Pakistan",
-        Weight: "12.5 oz Denim",
-      },
-      inStock: true,
-      stockCount: 12,
-      tags: ["premium", "slim-fit"],
-    },
-    {
-      id: 6,
-      title: "Summer Floral Dress",
-      brand: "Chic Styles",
-      price: 4200,
-      images: ["/products_page/summer_floral_dress.jpg", "/products_page/summer_floral_dress_2.jpg"],
-      category: "dresses",
-      sizes: ["XS", "S", "M", "L"],
-      colors: ["yellow", "white", "pink"],
-      rating: 4.4,
-      reviews: 92,
-      description:
-        "Beautiful floral print dress perfect for summer. Lightweight and breathable fabric with a flattering fit.",
-      specifications: {
-        Material: "100% Viscose",
-        Fit: "Regular Fit",
-        Care: "Hand wash cold",
-        Origin: "Made in Pakistan",
-        Length: "Midi Length",
-      },
-      inStock: true,
-      stockCount: 18,
-      tags: ["summer", "floral"],
-    },
-    {
-      id: 7,
-      title: "Leather Crossbody Bag",
-      brand: "Luxury Goods",
-      price: 7500,
-      images: [
-        "/products_page/leather_crossbody_bag.jpg",
-        "/products_page/leather_crossbody_bag_2.jpg",
-        "/products_page/leather_crossbody_bag_3.jpg",
-      ],
-      category: "accessories",
-      sizes: ["One Size"],
-      colors: ["brown", "black"],
-      rating: 4.8,
-      reviews: 45,
-      description:
-        "Premium leather crossbody bag with multiple compartments. Designed for everyday use with both style and practicality in mind.",
-      specifications: {
-        Material: "Genuine Cowhide Leather",
-        Strap: "Adjustable Crossbody Strap",
-        Care: "Clean with leather conditioner",
-        Origin: "Made in Pakistan",
-        Dimensions: "25cm x 18cm x 8cm",
-      },
-      inStock: false,
-      stockCount: 0,
-      tags: ["luxury", "leather"],
-    },
-    {
-      id: 8,
-      title: "Athletic Running Shoes",
-      brand: "Sport Pro",
-      price: 4900,
-      images: [
-        "/products_page/athletic_running_shoes.jpg",
-        "/products_page/athletic_running_shoes_2.jpg",
-        "/products_page/athletic_running_shoes_3.jpg",
-      ],
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11", "12"],
-      colors: ["black", "white", "grey"],
-      rating: 4.6,
-      reviews: 134,
-      description:
-        "High-performance running shoes with advanced cushioning for long-distance comfort. Designed for both training and everyday wear.",
-      specifications: {
-        Material: "Mesh Upper with Synthetic Overlays",
-        Sole: "EVA Midsole + Rubber Outsole",
-        Care: "Wipe with damp cloth",
-        Origin: "Made in Pakistan",
-        Type: "Athletic Running Shoes",
-      },
-      inStock: true,
-      stockCount: 20,
-      tags: ["athletic", "performance"],
-    },
-    {
-      id: 9,
-      title: "Floral Button-Up Shirt",
-      brand: "Tropical Wear",
-      price: 3500,
-      images: [
-        "/virtual_tryon/buttonup_shirt.jpg"
-      ],
-      category: "tops",
-      sizes: ["S", "M", "L", "XL"],
-      colors: ["white", "multicolor"],
-      rating: 4.6,
-      reviews: 54,
-      description: "Lightweight floral button-up shirt perfect for summer. Features a relaxed fit with breathable fabric and tropical-inspired print.",
-      specifications: {
-        Material: "100% Cotton",
-        Fit: "Relaxed Fit",
-        Care: "Machine wash cold, hang dry",
-        Origin: "Made in Pakistan",
-        Style: "Short-Sleeve Casual Shirt",
-      },
-      inStock: true,
-      stockCount: 20,
-      tags: ["summer", "casual", "floral"],
-    },
-    {
-      id: 10,
-      title: "Graphic Print Hoodie",
-      brand: "Street Art",
-      price: 3900,
-      images: [
-        "/products_page/graphic_print_hoodie.jpg",
-        "/products_page/graphic_print_hoodie_2.jpg",
-      ],
-      category: "tops",
-      sizes: ["M", "L", "XL"],
-      colors: ["black", "white"],
-      rating: 4.3,
-      reviews: 88,
-      description:
-        "Unique graphic print hoodie with artistic design. Soft fabric and modern cut for a bold streetwear look.",
-      specifications: {
-        Material: "80% Cotton, 20% Polyester",
-        Fit: "Regular Fit",
-        Care: "Machine wash cold, tumble dry low",
-        Origin: "Made in Pakistan",
-        Print: "High-quality Screen Print",
-      },
-      inStock: true,
-      stockCount: 14,
-      tags: ["graphic", "artistic"],
-    },
-    {
-      id: 11,
-      title: "High-Waisted Jeans",
-      brand: "Denim Co",
-      price: 5200,
-      images: [
-        "/products_page/high_waisted_jeans.jpg",
-        "/products_page/high_waisted_jeans_2.jpg",
-      ],
-      category: "bottoms",
-      sizes: ["26", "28", "30", "32"],
-      colors: ["blue", "black"],
-      rating: 4.6,
-      reviews: 112,
-      description:
-        "Flattering high-waisted jeans with vintage wash. Combines comfort with a timeless denim look.",
-      specifications: {
-        Material: "99% Cotton, 1% Elastane",
-        Fit: "High-Waist Slim Fit",
-        Care: "Machine wash cold, hang dry",
-        Origin: "Made in Pakistan",
-        Weight: "12 oz Denim",
-      },
-      inStock: true,
-      stockCount: 16,
-      tags: ["high-waist", "vintage"],
-    },
-    {
-      id: 12,
-      title: "Minimalist Watch",
-      brand: "Time Piece",
-      price: 6800,
-      images: [
-        "/products_page/minimalistic_watch.jpg",
-        "/products_page/minimalistic_watch_2.jpg",
-      ],
-      category: "accessories",
-      sizes: ["One Size"],
-      colors: ["black", "white", "brown"],
-      rating: 4.9,
-      reviews: 234,
-      description:
-        "Elegant minimalist watch with a leather strap. Combines timeless design with modern craftsmanship.",
-      specifications: {
-        Material: "Stainless Steel Case & Genuine Leather Strap",
-        Movement: "Quartz",
-        Care: "Avoid contact with water and magnetic fields",
-        Origin: "Made in Pakistan",
-        Diameter: "40mm",
-      },
-      inStock: true,
-      stockCount: 25,
-      tags: ["minimalist", "elegant"],
+  // Initialize user and cart from localStorage when running in browser
+  useEffect(() => {
+    try {
+      const rawUser = typeof window !== "undefined" ? localStorage.getItem("user") : null
+      if (rawUser) setUser(JSON.parse(rawUser))
+    } catch (e) {
+      console.warn("Failed to parse stored user", e)
     }
-  ]
 
-  // Find the current product
-  const product = allProducts.find((p) => p.id === productId)
+    try {
+      const rawCart = typeof window !== "undefined" ? localStorage.getItem("cart") : null
+      if (rawCart) setCartItems(JSON.parse(rawCart))
+    } catch (e) {
+      console.warn("Failed to parse stored cart", e)
+    }
+  }, [])
 
-  // Related products (same category, different products)
-  const relatedProducts = allProducts.filter((p) => p.category === product?.category && p.id !== productId).slice(0, 4)
+  // Persist cart to localStorage
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cart", JSON.stringify(cartItems))
+    } catch (e) {
+      console.warn("Failed to persist cart", e)
+    }
+  }, [cartItems])
+  // Fetch product from backend
+  useEffect(() => {
+    let mounted = true
+    const fetchProduct = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/customer/products/${productId}`)
+        const data = await res.json()
+        // Log backend response for debugging in browser console
+        try {
+          console.log(`GET /api/customer/products/${productId} ->`, { status: res.status, ok: res.ok, data })
+        } catch (logErr) {
+          // swallow logging errors
+          console.warn('Failed to log product fetch response', logErr)
+        }
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || 'Product not found')
+        }
+
+        if (!mounted) return
+        const p = data.product
+        // normalize images to an array of SD URLs for display
+        const images = (p.images || []).map((img) => img.SD || img.HD || img)
+        const thumbnailUrl = p.thumbnail?.SD || p.thumbnail?.HD || images[0] || null
+
+        setProduct({
+          ...p,
+          images,
+          thumbnail: thumbnailUrl,
+        })
+
+        setRelatedProducts(data.relatedProducts || [])
+        setSimilarProducts(data.similarProducts || [])
+      } catch (err) {
+        console.error('Failed to fetch product:', err)
+        if (mounted) setError(err.message || 'Failed to load product')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+
+    fetchProduct()
+    return () => { mounted = false }
+  }, [productId])
 
   // Mock reviews data
   const reviews = [
@@ -613,7 +356,7 @@ export default function ProductDetailPage() {
           <div className="space-y-6">
             {/* Brand & Title */}
             <div>
-              <p className="text-sm text-gray-600 mb-2">{product.brand}</p>
+              <p className="text-sm text-gray-600 mb-2">{product.brand?.name || product.brand}</p>
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.title}</h1>
 
               {/* Rating & Reviews */}
@@ -734,8 +477,8 @@ export default function ProductDetailPage() {
 
               {/* Virtual Try-on Button */}
               <div className="flex justify-center pt-2">
-                <button onClick={handleVirtualTryOn} class="pill-button">
-                  <span class="label">Virtual Try-on</span>
+                <button onClick={handleVirtualTryOn} className="pill-button">
+                  <span className="label">Virtual Try-on</span>
                 </button>
               </div>
 
@@ -933,7 +676,7 @@ export default function ProductDetailPage() {
                       <span className="text-sm text-gray-400">({relatedProduct.reviews})</span>
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{relatedProduct.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand}</p>
+                    <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand?.name || relatedProduct.brand}</p>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-900">PKR {relatedProduct.price.toLocaleString()}</span>
                       {relatedProduct.originalPrice && (

@@ -8,7 +8,8 @@ export async function GET(request, { params }) {
   try {
     await connectToDatabase();
 
-    const { id } = params;
+  // `params` can be a promise-like in Next.js route handlers — await it before use
+  const { id } = await params;
 
     // Find the product (only active and in stock)
     const product = await Product.findOne({ 

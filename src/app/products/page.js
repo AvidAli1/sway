@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Search,
   Grid,
@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   X,
   ChevronDown,
+  Check,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -20,13 +21,14 @@ export default function ProductsPage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [viewMode, setViewMode] = useState("grid") // 'grid' or 'list'
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("featured")
+  const [sortBy, setSortBy] = useState("newest")
   const [showFilters, setShowFilters] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [cartItems, setCartItems] = useState([])
   const [wishlist, setWishlist] = useState(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [productsPerPage] = useState(12)
+  const [categoriesList, setCategoriesList] = useState([])
 
   const [filters, setFilters] = useState({
     brands: [],
@@ -42,20 +44,78 @@ export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [productsError, setProductsError] = useState(null)
+  const lastFetchParamsRef = useRef(null)
+  const hasSeededFiltersRef = useRef(false)
 
-  // Fetch products from backend API
+  // Fetch products from backend API (server-side filtering)
   useEffect(() => {
     let mounted = true
+    const buildParamsString = (filt) => {
+      // special-case: when user selects "featured" we want a short featured-only request
+      if (sortBy === 'featured') {
+        const p = new URLSearchParams()
+        p.append('featured', 'true')
+        p.append('limit', String(8))
+        return p.toString()
+      }
+      const params = new URLSearchParams()
+      params.append('page', String(currentPage || 1))
+      params.append('limit', String(productsPerPage || 12))
+  if (searchQuery) params.append('search', searchQuery)
+      if (filt.categories && filt.categories.length > 0) params.append('category', filt.categories.join(','))
+      if (filt.brands && filt.brands.length > 0) params.append('brands', filt.brands.join(','))
+      if (filt.sizes && filt.sizes.length > 0) params.append('sizes', filt.sizes.join(','))
+      if (filt.colors && filt.colors.length > 0) params.append('colors', filt.colors.join(','))
+      if (filt.priceRange) {
+        params.append('minPrice', String(filt.priceRange[0] || 0))
+        params.append('maxPrice', String(filt.priceRange[1] || 0))
+      }
+      if (filt.rating) params.append('rating', String(filt.rating))
+      if (filt.inStock) params.append('inStock', 'true')
+      // map UI sort option to backend sortBy + sortOrder
+      const mapSort = (s) => {
+        switch (s) {
+          case 'price-low':
+            return { sortBy: 'price', sortOrder: 'asc' }
+          case 'price-high':
+            return { sortBy: 'price', sortOrder: 'desc' }
+          case 'rating':
+            return { sortBy: 'ratings', sortOrder: 'desc' }
+          case 'newest':
+            return { sortBy: 'createdAt', sortOrder: 'desc' }
+          case 'popular':
+            return { sortBy: 'numReviews', sortOrder: 'desc' }
+          default:
+            return { sortBy: 'featured', sortOrder: 'desc' }
+        }
+      }
+      const sortParams = mapSort(sortBy)
+      if (sortParams?.sortBy) params.append('sortBy', sortParams.sortBy)
+      if (sortParams?.sortOrder) params.append('sortOrder', sortParams.sortOrder)
+      return params.toString()
+    }
+
     const fetchProducts = async () => {
       setProductsLoading(true)
       setProductsError(null)
       try {
-        const res = await fetch('/api/customer/products?page=1&limit=12')
+        const paramsString = buildParamsString(filters)
+
+        // If the params haven't changed since last fetch, skip (prevents duplicate calls)
+        if (lastFetchParamsRef.current === paramsString) {
+          return
+        }
+
+        const url = `/api/customer/products?${paramsString}`
+        console.debug('Fetching products with URL:', url)
+
+        const res = await fetch(url)
         if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`)
         const data = await res.json()
         if (!mounted) return
+
+        // Normalize server products to UI shape
         setAllProducts((data && Array.isArray(data.products)) ? data.products.map(p => ({
-          // normalize backend shape to the shape used by the UI where possible
           id: p._id,
           title: p.name,
           brand: (p.brand && p.brand.name) || (p.brand || ''),
@@ -73,101 +133,97 @@ export default function ProductsPage() {
           tags: p.tags || [],
         })) : [])
 
-        // If API returns filters, seed UI filters
-        if (data && data.filters) {
+        // If API returns filters, seed UI filters only once (to avoid refetch loop)
+        if (data && data.filters && !hasSeededFiltersRef.current) {
+          const newCategories = data.filters.categories || []
+          const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
           setFilters((prev) => ({
             ...prev,
-            categories: data.filters.categories || prev.categories,
-            // priceRange min/max
-            priceRange: data.filters.priceRange ? [data.filters.priceRange.minPrice || prev.priceRange[0], data.filters.priceRange.maxPrice || prev.priceRange[1]] : prev.priceRange,
+            categories: newCategories.length > 0 ? newCategories : prev.categories,
+            priceRange: newPriceRange,
           }))
+
+          // After seeding filters, compute the params string that would result and set as lastFetched
+          const seededFilters = { ...filters, categories: newCategories.length > 0 ? newCategories : filters.categories, priceRange: newPriceRange }
+          lastFetchParamsRef.current = buildParamsString(seededFilters)
+          hasSeededFiltersRef.current = true
+        } else {
+          // normal path: mark this paramsString as last fetched
+          lastFetchParamsRef.current = paramsString
         }
+
       } catch (err) {
         console.error(err)
-        if (mounted) setProductsError(err.message)
+        setProductsError(err.message)
       } finally {
-        if (mounted) setProductsLoading(false)
+        setProductsLoading(false)
       }
     }
+
     fetchProducts()
     return () => { mounted = false }
-  }, [])
+  }, [currentPage, filters, sortBy, searchQuery, productsPerPage])
+
+  // Reflect current filters in the browser URL (so the GET request URL is visible)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', String(currentPage || 1))
+      params.append('limit', String(productsPerPage || 12))
+  if (searchQuery) params.append('search', searchQuery)
+      if (filters.categories && filters.categories.length > 0) params.append('category', filters.categories.join(','))
+      if (filters.brands && filters.brands.length > 0) params.append('brands', filters.brands.join(','))
+      if (filters.sizes && filters.sizes.length > 0) params.append('sizes', filters.sizes.join(','))
+      if (filters.colors && filters.colors.length > 0) params.append('colors', filters.colors.join(','))
+      if (filters.priceRange) {
+        params.append('minPrice', String(filters.priceRange[0] || 0))
+        params.append('maxPrice', String(filters.priceRange[1] || 0))
+      }
+      if (filters.rating) params.append('rating', String(filters.rating))
+      if (filters.inStock) params.append('inStock', 'true')
+      // special-case featured listing in URL: show featured=true&limit=8
+      if (sortBy === 'featured') {
+        params.append('featured', 'true')
+        params.append('limit', String(8))
+      } else {
+      // map UI sort option to backend sortBy + sortOrder for URL
+      const mapSort = (s) => {
+        switch (s) {
+          case 'price-low':
+            return { sortBy: 'price', sortOrder: 'asc' }
+          case 'price-high':
+            return { sortBy: 'price', sortOrder: 'desc' }
+          case 'rating':
+            return { sortBy: 'ratings', sortOrder: 'desc' }
+          case 'newest':
+            return { sortBy: 'createdAt', sortOrder: 'desc' }
+          case 'popular':
+            return { sortBy: 'numReviews', sortOrder: 'desc' }
+          default:
+            return { sortBy: 'featured', sortOrder: 'desc' }
+        }
+      }
+  const sortParams = mapSort(sortBy)
+  if (sortParams?.sortBy) params.append('sortBy', sortParams.sortBy)
+  if (sortParams?.sortOrder) params.append('sortOrder', sortParams.sortOrder)
+  }
+
+      if (typeof window !== 'undefined') {
+        const newUrl = `${window.location.pathname}?${params.toString()}`
+        window.history.replaceState(null, '', newUrl)
+      }
+    } catch (e) {
+      // ignore URL update errors
+    }
+  }, [currentPage, filters, sortBy, searchQuery, productsPerPage])
 
   const [filteredProducts, setFilteredProducts] = useState(allProducts)
 
-  // Filter and search products
+  // When server returns products, use them directly (server-side filtered)
   useEffect(() => {
-    let filtered = allProducts
-
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (product) =>
-          product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    }
-
-    // Brand filter
-    if (filters.brands.length > 0) {
-      filtered = filtered.filter((product) => filters.brands.includes(product.brand))
-    }
-
-    // Category filter
-    if (filters.categories.length > 0) {
-      filtered = filtered.filter((product) => filters.categories.includes(product.category))
-    }
-
-    // Price filter
-    filtered = filtered.filter(
-      (product) => product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1],
-    )
-
-    // Color filter
-    if (filters.colors.length > 0) {
-      filtered = filtered.filter((product) => product.colors.some((color) => filters.colors.includes(color)))
-    }
-
-    // Rating filter
-    if (filters.rating > 0) {
-      filtered = filtered.filter((product) => product.rating >= filters.rating)
-    }
-
-    // Stock filter
-    if (filters.inStock) {
-      filtered = filtered.filter((product) => product.inStock)
-    }
-
-    // Sort products
-    switch (sortBy) {
-      case "price-low":
-        filtered.sort((a, b) => a.price - b.price)
-        break
-      case "price-high":
-        filtered.sort((a, b) => b.price - a.price)
-        break
-      case "rating":
-        filtered.sort((a, b) => b.rating - a.rating)
-        break
-      case "newest":
-        filtered.sort((a, b) => b.id - a.id)
-        break
-      case "popular":
-        filtered.sort((a, b) => b.reviews - a.reviews)
-        break
-      default:
-        // Featured - sponsored first, then by rating
-        filtered.sort((a, b) => {
-          if (a.isSponsored && !b.isSponsored) return -1
-          if (!a.isSponsored && b.isSponsored) return 1
-          return b.rating - a.rating
-        })
-    }
-
-    setFilteredProducts(filtered)
+    setFilteredProducts(allProducts)
     setCurrentPage(1)
-  }, [searchQuery, filters, sortBy, allProducts])
+  }, [allProducts])
 
   // Pagination
   const indexOfLastProduct = currentPage * productsPerPage
@@ -176,15 +232,27 @@ export default function ProductsPage() {
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]:
-        prev[filterType].includes && prev[filterType].includes(value)
-          ? prev[filterType].filter((item) => item !== value)
-          : Array.isArray(prev[filterType])
-            ? [...prev[filterType], value]
-            : value,
-    }))
+    // Special-case priceRange (it's an array [min, max]) and boolean/toggle filters
+    if (filterType === "priceRange") {
+      setFilters((prev) => ({ ...prev, priceRange: value }))
+      return
+    }
+
+    // For toggles like inStock or rating which are primitives, just set directly
+    if (!Array.isArray(filters[filterType])) {
+      setFilters((prev) => ({ ...prev, [filterType]: value }))
+      return
+    }
+
+    // For array filters (brands, categories, colors, sizes) toggle membership
+    setFilters((prev) => {
+      const current = prev[filterType] || []
+      const exists = current.includes(value)
+      return {
+        ...prev,
+        [filterType]: exists ? current.filter((item) => item !== value) : [...current, value],
+      }
+    })
   }
 
   const handleAddToCart = (product) => {
@@ -225,6 +293,28 @@ export default function ProductsPage() {
   const brands = [...new Set(allProducts.map((p) => p.brand))]
   const categories = [...new Set(allProducts.map((p) => p.category))]
   const colors = [...new Set(allProducts.flatMap((p) => p.colors))]
+
+  // Fetch categories from backend (useful when server has its own category list)
+  useEffect(() => {
+    let mounted = true
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/customer/products/categories')
+        if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`)
+        const data = await res.json()
+        if (!mounted) return
+        if (data && Array.isArray(data.categories)) {
+          // categories in response use `_id`/`name`; prefer `name` then `_id`
+          const list = data.categories.map((c) => c.name || c._id).filter(Boolean)
+          setCategoriesList(list)
+        }
+      } catch (err) {
+        console.warn('Could not load categories from API:', err)
+      }
+    }
+    fetchCategories()
+    return () => { mounted = false }
+  }, [])
 
   // Initialize user from localStorage so header shows avatar/logout when logged in
   useEffect(() => {
@@ -325,9 +415,11 @@ export default function ProductsPage() {
               <FilterContent
                 filters={filters}
                 brands={brands}
-                categories={categories}
+                categories={categoriesList.length > 0 ? categoriesList : categories}
                 colors={colors}
                 onFilterChange={handleFilterChange}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
               />
             </div>
           </div>
@@ -357,8 +449,8 @@ export default function ProductsPage() {
                       onChange={(e) => setSortBy(e.target.value)}
                       className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
                     >
-                      <option value="featured">Featured</option>
                       <option value="newest">Newest</option>
+                      <option value="featured">Featured</option>
                       <option value="popular">Most Popular</option>
                       <option value="price-low">Price: Low to High</option>
                       <option value="price-high">Price: High to Low</option>
@@ -476,9 +568,11 @@ export default function ProductsPage() {
               <FilterContent
                 filters={filters}
                 brands={brands}
-                categories={categories}
+                categories={categoriesList.length > 0 ? categoriesList : categories}
                 colors={colors}
                 onFilterChange={handleFilterChange}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
               />
               <div className="flex gap-3 mt-6">
                 <button
@@ -503,7 +597,7 @@ export default function ProductsPage() {
 }
 
 // Filter Content Component
-function FilterContent({ filters, brands, categories, colors, onFilterChange }) {
+function FilterContent({ filters, brands, categories, colors, onFilterChange, sortBy, setSortBy }) {
   return (
     <div className="space-y-6">
       {/* Brands */}
@@ -557,6 +651,8 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange }) 
           <span>PKR 0</span>
           <span>PKR {filters.priceRange[1].toLocaleString()}</span>
         </div>
+
+        
       </div>
 
       {/* Colors */}
