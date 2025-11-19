@@ -375,9 +375,9 @@ const orderSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Pre-save middleware to generate order number
-orderSchema.pre('save', async function(next) {
-  if (this.isNew) {
+// Pre-validate middleware to generate order number
+orderSchema.pre('validate', async function(next) {
+  if (this.isNew && !this.orderNumber) {
     // Generate order number: ORD-YYYYMMDD-XXXXXX
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -385,13 +385,19 @@ orderSchema.pre('save', async function(next) {
     this.orderNumber = `ORD-${dateStr}-${randomNum}`;
     
     // Add initial status to history
-    this.statusHistory = [{
-      status: this.status,
-      timestamp: new Date(),
-      note: 'Order created',
-    }];
+    if (!this.statusHistory || this.statusHistory.length === 0) {
+      this.statusHistory = [{
+        status: this.status,
+        timestamp: new Date(),
+        note: 'Order created',
+      }];
+    }
   }
-  
+  next();
+});
+
+// Pre-save middleware for timestamps
+orderSchema.pre('save', async function(next) {
   // Update updatedAt timestamp
   this.updatedAt = new Date();
   next();
@@ -437,7 +443,7 @@ orderSchema.statics.getOrderStats = async function(customerId) {
 
 // Indexes for better performance
 orderSchema.index({ customer: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 });
+// orderNumber has unique: true, so explicit index is redundant
 orderSchema.index({ status: 1 });
 orderSchema.index({ 'payment.status': 1 });
 orderSchema.index({ createdAt: -1 });

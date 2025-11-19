@@ -155,7 +155,14 @@ export async function POST(request) {
     const total = subtotal - discount + shippingCost + tax;
 
     // Create order
+    // Generate order number: ORD-YYYYMMDD-XXXXXX
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const orderNumber = `ORD-${dateStr}-${randomNum}`;
+
     const order = new Order({
+      orderNumber,
       customer: user.id,
       items: processedItems,
       subtotal,
@@ -176,6 +183,11 @@ export async function POST(request) {
       isGift: isGift || false,
       giftMessage: giftMessage || '',
       source: 'web',
+      statusHistory: [{
+        status: 'pending',
+        timestamp: new Date(),
+        note: 'Order created',
+      }]
     });
 
     await order.save({ session });
