@@ -558,12 +558,24 @@ export default function ProductDetailPage() {
 
             {activeTab === "specifications" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(product.specifications || {}).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-3 border-b border-gray-200">
-                    <span className="font-medium text-gray-900">{key}:</span>
-                    <span className="text-gray-700">{value}</span>
-                  </div>
-                ))}
+                {Array.isArray(product.specifications) && product.specifications.length > 0 ? (
+                  product.specifications.map((spec, index) => (
+                    <div key={spec._id || index} className="flex justify-between py-3 border-b border-gray-200">
+                      <span className="font-medium text-gray-900">{spec.key}:</span>
+                      <span className="text-gray-700">{spec.value}</span>
+                    </div>
+                  ))
+                ) : typeof product.specifications === 'object' && product.specifications !== null ? (
+                  // Fallback for object format (legacy support)
+                  Object.entries(product.specifications).map(([key, value]) => (
+                    <div key={key} className="flex justify-between py-3 border-b border-gray-200">
+                      <span className="font-medium text-gray-900">{key}:</span>
+                      <span className="text-gray-700">{String(value)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-600">No specifications available</p>
+                )}
               </div>
             )}
 

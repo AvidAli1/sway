@@ -223,3 +223,114 @@ export async function DELETE(request, { params }) {
     );
   }
 }
+
+// PUT /api/brand/products/[id]/images - Reorder images
+export async function PUT(request, { params }) {
+  try {
+    await connectToDatabase();
+
+    // Authenticate the request
+    const authResult = await authMiddleware(request);
+    if (authResult.error) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    const { user } = authResult;
+
+    // Check if user is a brand
+    if (user.role !== 'brand') {
+      return NextResponse.json(
+        { error: 'Access denied. Brand role required.' },
+        { status: 403 }
+      );
+    }
+
+    // Find the brand associated with this user
+    const brand = await Brand.findOne({ owner: user.id });
+    if (!brand) {
+      return NextResponse.json(
+        { error: 'Brand not found' },
+        { status: 404 }
+      );
+    }
+
+    const { id } = params;
+
+    // Find the product
+    const product = await Product.findOne({ 
+      _id: id, 
+      brand: brand._id 
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get parameters from query string
+    const { searchParams } = new URL(request.url);
+    const fromIndex = searchParams.get('fromIndex');
+    const toIndex = searchParams.get('toIndex');
+
+    if (fromIndex === null || toIndex === null) {
+      return NextResponse.json(
+        { error: 'fromIndex and toIndex are required' },
+        { status: 400 }
+      );
+    }
+
+    const from = parseInt(fromIndex);
+    const to = parseInt(toIndex);
+
+    if (isNaN(from) || isNaN(to)) {
+      return NextResponse.json(
+        { error: 'Invalid indices provided' },
+        { status: 400 }
+      );
+    }
+
+    if (from < 0 || from >= product.images.length || to < 0 || to >= product.images.length) {
+      return NextResponse.json(
+        { error: 'Index out of bounds' },
+        { status: 400 }
+      );
+    }
+
+    if (from === to) {
+      return NextResponse.json(
+        { error: 'Source and destination indices are the same' },
+        { status: 400 }
+      );
+    }
+
+    // Reorder the images array
+    const updatedImages = [...product.images];
+    const [movedImage] = updatedImages.splice(from, 1);
+    updatedImages.splice(to, 0, movedImage);
+
+    // Update the product
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { images: updatedImages },
+      { new: true, runValidators: true }
+    ).populate('brand', 'name businessEmail');
+
+    return NextResponse.json({
+      success: true,
+      message: 'Image reordered successfully',
+      product: updatedProduct
+    });
+
+  } catch (error) {
+    console.error('Error reordering images:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
