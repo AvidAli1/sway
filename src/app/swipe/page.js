@@ -5,10 +5,14 @@ import { ArrowLeft, ShoppingCart, Container, X, Filter } from "lucide-react"
 import Link from "next/link"
 import SwipeInterface from "./components/SwipeInterface"
 import SwipeBucketModal from "./components/SwipeBucketModal"
+import ToastNotification from "../components/ToastNotification"
 
 export default function SwipePage() {
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("info")
   const [cartItems, setCartItems] = useState([])
   const [cartCount, setCartCount] = useState(0)
   const [bucketItems, setBucketItems] = useState([])
@@ -146,15 +150,65 @@ export default function SwipePage() {
     setFilteredProducts(filtered)
   }, [filters, allProducts])
 
-  const handleAddToCart = (product) => {
-    setCartItems((prev) => {
-      const existingItem = prev.find((item) => item.id === product.id)
-      if (existingItem) {
-        return prev.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
+  const showToast = (message, type = "info") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
+
+  const handleAddToCart = async (product) => {
+    // Check if user is logged in
+    if (!user) {
+      showToast("Please log in first", "info")
+      return
+    }
+
+    // Check if user is a customer (brands cannot make orders)
+    if (user.role === "brand") {
+      showToast("Brands are not allowed to make orders. Please log in with a customer account.", "error")
+      return
+    }
+
+    // If product requires size/color selection, redirect to product details page
+    if ((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) {
+      window.location.href = `/productDetails/${product.id}`
+      return
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+      if (!token) {
+        showToast("Please log in first", "info")
+        return
       }
-      return [...prev, { ...product, quantity: 1 }]
-    })
-    setCartCount((prev) => prev + 1)
+
+      const res = await fetch("/api/customer/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1,
+          size: product.sizes && product.sizes.length > 0 ? product.sizes[0] : null,
+          color: product.colors && product.colors.length > 0 ? product.colors[0] : null,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        // Update cart count
+        const totalItems = data.cart?.totalItems || 0
+        setCartCount(totalItems)
+      } else {
+        showToast(data.error || "Failed to add item to cart", "error")
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      showToast("An error occurred while adding to cart", "error")
+    }
   }
 
   const handleAddToBucket = (product) => {
@@ -192,6 +246,12 @@ export default function SwipePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -217,7 +277,8 @@ export default function SwipePage() {
                 <Filter className="w-5 h-5" />
               </button>
 
-              <button
+              <Link
+                href="/cart"
                 className="relative p-2 text-gray-600 hover:text-black transition-colors"
                 aria-label="Shopping cart"
               >
@@ -227,7 +288,7 @@ export default function SwipePage() {
                     {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {user ? (
                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center">

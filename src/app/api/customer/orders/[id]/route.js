@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find order
     const order = await Order.findOne({
@@ -87,7 +87,7 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action, reason } = body;
 

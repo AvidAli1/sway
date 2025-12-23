@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Search, ShoppingCart, Heart, Star, ArrowRight, Filter, X, Menu } from "lucide-react"
+import { Search, ShoppingCart, Heart, Star, ArrowRight, Filter, X, Menu, User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import ProductModal from "./components/ProductModal"
+import ToastNotification from "./components/ToastNotification"
 
 // Custom hook for intersection observer
 const useInView = (threshold = 0.1, rootMargin = "0px") => {
@@ -38,9 +39,15 @@ export default function HomePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [headerLoaded, setHeaderLoaded] = useState(false)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
 
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("info")
+  
+  const profileDropdownRef = useRef(null)
 
   // Intersection Observer refs for different sections
   const [heroRef, heroInView] = useInView(0.2)
@@ -69,6 +76,90 @@ export default function HomePage() {
       // ignore
     }
   }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isProfileDropdownOpen])
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("authToken")
+    setUser(null)
+    setIsProfileDropdownOpen(false)
+  }
+
+  const showToast = (message, type = "info") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
+
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Check if user is logged in
+    if (!user) {
+      showToast("Please log in first", "info")
+      return
+    }
+
+    // Check if user is a customer (brands cannot make orders)
+    if (user.role === "brand") {
+      showToast("Brands are not allowed to make orders. Please log in with a customer account.", "error")
+      return
+    }
+
+    // If product requires size/color selection, redirect to product details page
+    if ((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) {
+      window.location.href = `/productDetails/${product.id}`
+      return
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+      if (!token) {
+        showToast("Please log in first", "info")
+        return
+      }
+
+      const res = await fetch("/api/customer/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1,
+          size: product.sizes && product.sizes.length > 0 ? product.sizes[0] : null,
+          color: product.colors && product.colors.length > 0 ? product.colors[0] : null,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        showToast(data.error || "Failed to add item to cart", "error")
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      showToast("An error occurred while adding to cart", "error")
+    }
+  }
 
   // Mock featured products data
   const featuredProducts = [
@@ -206,31 +297,47 @@ export default function HomePage() {
               </button>
 
               {/* Cart */}
-              <button className="p-2 text-gray-600 hover:text-yellow-600 transition-colors relative">
+              <Link href="/cart" className="p-2 text-gray-600 hover:text-yellow-600 transition-colors relative">
                 <ShoppingCart className="w-6 h-6" />
                 <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
                   0
                 </span>
-              </button>
+              </Link>
 
               {/* Auth Buttons */}
               {user ? (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
-                  </div>
-                  <span className="hidden md:block text-sm font-medium">{user.name}</span>
+                <div className="relative" ref={profileDropdownRef}>
                   <button
-                    onClick={() => {
-                      localStorage.removeItem("user")
-                      localStorage.removeItem("authToken")
-                      setUser(null)
-                      // stay on landing page but update UI
-                    }}
-                    className="text-gray-600 hover:text-red-600"
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-2 px-3 py-2 border-2 border-yellow-400 rounded-lg hover:bg-yellow-50 transition-colors bg-transparent"
                   >
-                    Logout
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
+                  
+                  {/* Dropdown Menu */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                      <Link
+                        href={user.role === "brand" ? "/brandDashboard" : "/customerDashboard"}
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-yellow-50 transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="hidden md:flex items-center space-x-3">
@@ -642,11 +749,7 @@ export default function HomePage() {
                   </div>
 
                   <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      // Add to cart logic here
-                    }}
+                    onClick={(e) => handleAddToCart(e, product)}
                     className="w-full mt-3 bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition-colors font-medium"
                   >
                     Add to Cart

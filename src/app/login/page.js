@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ToastNotification from "../components/ToastNotification"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,6 +14,15 @@ export default function LoginPage() {
     email: "",
     password: "",
   })
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("error")
+
+  const showToast = (message, type = "error") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -26,7 +36,7 @@ export default function LoginPage() {
     e.preventDefault()
 
     if (!formData.email || !formData.password) {
-      alert("Please enter email and password.")
+      showToast("Please enter email and password.", "error")
       return
     }
 
@@ -78,10 +88,10 @@ export default function LoginPage() {
       }
 
       const msg = data?.error || data?.message || "Invalid email or password"
-      alert(msg)
+      showToast(msg, "error")
     } catch (error) {
       console.error("Login error:", error)
-      alert("An error occurred while logging in. Please try again.")
+      showToast("An error occurred while logging in. Please try again.", "error")
     } finally {
       setLoading(false)
     }
@@ -89,6 +99,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

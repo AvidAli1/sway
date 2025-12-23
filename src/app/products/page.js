@@ -13,12 +13,21 @@ import {
   X,
   ChevronDown,
   Check,
+  User,
+  LogOut,
+  LayoutDashboard,
 } from "lucide-react"
 import Link from "next/link"
+import ToastNotification from "../components/ToastNotification"
 
 export default function ProductsPage() {
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("info")
   const [viewMode, setViewMode] = useState("grid") // 'grid' or 'list'
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("newest")
@@ -255,14 +264,80 @@ export default function ProductsPage() {
     })
   }
 
-  const handleAddToCart = (product) => {
-    setCartItems((prev) => {
-      const existingItem = prev.find((item) => item.id === product.id)
-      if (existingItem) {
-        return prev.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
+  const showToast = (message, type = "info") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
+
+  const handleAddToCart = async (product) => {
+    // Check if user is logged in
+    if (!user) {
+      showToast("Please log in first", "info")
+      return
+    }
+
+    // Check if user is a customer (brands cannot make orders)
+    if (user.role === "brand") {
+      showToast("Brands are not allowed to make orders. Please log in with a customer account.", "error")
+      return
+    }
+
+    // If product requires size/color selection, redirect to product details page
+    if ((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) {
+      window.location.href = `/productDetails/${product.id}`
+      return
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+      if (!token) {
+        showToast("Please log in first", "info")
+        return
       }
-      return [...prev, { ...product, quantity: 1 }]
-    })
+
+      const res = await fetch("/api/customer/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1,
+          size: product.sizes && product.sizes.length > 0 ? product.sizes[0] : null,
+          color: product.colors && product.colors.length > 0 ? product.colors[0] : null,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        // Update local cart items from API response
+        if (data.cart && data.cart.items) {
+          const transformed = data.cart.items.map((item) => ({
+            id: item.product?._id || item.product,
+            title: item.product?.name || "Product",
+            brand: typeof item.product?.brand === "string" 
+              ? item.product.brand 
+              : (item.product?.brand?.name || "Brand"),
+            price: item.price,
+            originalPrice: item.originalPrice || item.price,
+            image: item.product?.thumbnail?.SD || item.product?.images?.[0]?.SD || "/placeholder.svg",
+            quantity: item.quantity,
+            selectedSize: item.size,
+            selectedColor: item.color,
+            itemId: item._id,
+          }))
+          setCartItems(transformed)
+        }
+      } else {
+        showToast(data.error || "Failed to add item to cart", "error")
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      showToast("An error occurred while adding to cart", "error")
+    }
   }
 
   const toggleWishlist = (productId) => {
@@ -328,8 +403,39 @@ export default function ProductsPage() {
       // ignore
     }
   }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isProfileDropdownOpen])
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("authToken")
+    setUser(null)
+    setIsProfileDropdownOpen(false)
+    setIsLoginOpen(false)
+  }
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -359,33 +465,48 @@ export default function ProductsPage() {
 
             {/* Right Actions */}
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-600 hover:text-black transition-colors">
+              <Link href="/cart" className="relative p-2 text-gray-600 hover:text-black transition-colors">
                 <ShoppingCart className="w-6 h-6" />
                 {cartItems.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
                     {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {user ? (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
-                  </div>
-                  <span className="hidden md:block text-sm font-medium">{user.name}</span>
+                <div className="relative" ref={profileDropdownRef}>
                   <button
-                    onClick={() => {
-                      localStorage.removeItem("user")
-                      localStorage.removeItem("authToken")
-                      setUser(null)
-                      // optional: close login modal if open
-                      setIsLoginOpen(false)
-                    }}
-                    className="text-gray-600 hover:text-red-600"
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-2 px-3 py-2 border-2 border-yellow-400 rounded-lg hover:bg-yellow-50 transition-colors bg-transparent"
                   >
-                    Logout
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
+                  
+                  {/* Dropdown Menu */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                      <Link
+                        href={user.role === "brand" ? "/brandDashboard" : "/customerDashboard"}
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-yellow-50 transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button

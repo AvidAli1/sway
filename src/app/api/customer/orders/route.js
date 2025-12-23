@@ -7,60 +7,63 @@ import mongoose from 'mongoose';
 
 // POST /api/customer/orders - Create a new order
 export async function POST(request) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const maxRetries = 3;
+  let retryCount = 0;
 
-  try {
-    await connectToDatabase();
+  await connectToDatabase();
 
-    // Authenticate the request
-    const authResult = await authMiddleware(request);
-    if (authResult.error) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
+  // Authenticate the request (only once, before retry loop)
+  const authResult = await authMiddleware(request);
+  if (authResult.error) {
+    return NextResponse.json(
+      { error: authResult.error },
+      { status: authResult.status }
+    );
+  }
 
-    const { user } = authResult;
+  const { user } = authResult;
 
-    // Check if user is a customer
-    if (user.role !== 'customer') {
-      return NextResponse.json(
-        { error: 'Access denied. Customer role required.' },
-        { status: 403 }
-      );
-    }
+  // Check if user is a customer (only once)
+  if (user.role !== 'customer') {
+    return NextResponse.json(
+      { error: 'Access denied. Customer role required.' },
+      { status: 403 }
+    );
+  }
 
-    const body = await request.json();
-    const { items, shippingAddress, payment, notes, isGift, giftMessage } = body;
+  const body = await request.json();
+  const { items, shippingAddress, payment, notes, isGift, giftMessage } = body;
 
-    // Validate required fields
-    if (!items || !items.length) {
-      await session.abortTransaction();
-      return NextResponse.json(
-        { error: 'Order items are required' },
-        { status: 400 }
-      );
-    }
+  // Validate required fields (only once)
+  if (!items || !items.length) {
+    return NextResponse.json(
+      { error: 'Order items are required' },
+      { status: 400 }
+    );
+  }
 
-    if (!shippingAddress) {
-      await session.abortTransaction();
-      return NextResponse.json(
-        { error: 'Shipping address is required' },
-        { status: 400 }
-      );
-    }
+  if (!shippingAddress) {
+    return NextResponse.json(
+      { error: 'Shipping address is required' },
+      { status: 400 }
+    );
+  }
 
-    if (!payment || !payment.method) {
-      await session.abortTransaction();
-      return NextResponse.json(
-        { error: 'Payment method is required' },
-        { status: 400 }
-      );
-    }
+  if (!payment || !payment.method) {
+    return NextResponse.json(
+      { error: 'Payment method is required' },
+      { status: 400 }
+    );
+  }
 
-    // Process order items and validate stock
+  // Retry loop for transaction operations
+  while (retryCount < maxRetries) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+
+      // Process order items and validate stock
     const processedItems = [];
     let subtotal = 0;
 
@@ -70,6 +73,7 @@ export async function POST(request) {
 
       if (!product) {
         await session.abortTransaction();
+        session.endSession();
         return NextResponse.json(
           { error: `Product not found: ${item.productId}` },
           { status: 404 }
@@ -79,6 +83,7 @@ export async function POST(request) {
       // Check if product is active and in stock
       if (product.status !== 'active' || !product.inStock) {
         await session.abortTransaction();
+        session.endSession();
         return NextResponse.json(
           { error: `Product is not available: ${product.name}` },
           { status: 400 }
@@ -88,6 +93,7 @@ export async function POST(request) {
       // Check stock availability
       if (product.stock < item.quantity) {
         await session.abortTransaction();
+        session.endSession();
         return NextResponse.json(
           { error: `Insufficient stock for ${product.name}. Available: ${product.stock}` },
           { status: 400 }
@@ -97,6 +103,7 @@ export async function POST(request) {
       // Validate size and color if provided
       if (item.size && !product.sizes.includes(item.size)) {
         await session.abortTransaction();
+        session.endSession();
         return NextResponse.json(
           { error: `Invalid size for ${product.name}` },
           { status: 400 }
@@ -105,6 +112,7 @@ export async function POST(request) {
 
       if (item.color && !product.colors.includes(item.color)) {
         await session.abortTransaction();
+        session.endSession();
         return NextResponse.json(
           { error: `Invalid color for ${product.name}` },
           { status: 400 }
@@ -192,35 +200,62 @@ export async function POST(request) {
 
     await order.save({ session });
 
-    // Commit transaction
-    await session.commitTransaction();
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
 
-    // Populate order for response
-    await order.populate('customer', 'name email phone');
+      // Populate order for response
+      await order.populate('customer', 'name email phone');
 
-    return NextResponse.json({
-      success: true,
-      message: 'Order placed successfully',
-      order: {
-        orderNumber: order.orderNumber,
-        _id: order._id,
-        total: order.total,
-        status: order.status,
-        items: order.items.length,
-        estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      return NextResponse.json({
+        success: true,
+        message: 'Order placed successfully',
+        order: {
+          orderNumber: order.orderNumber,
+          _id: order._id,
+          total: order.total,
+          status: order.status,
+          items: order.items.length,
+          estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        }
+      }, { status: 201 });
+
+    } catch (error) {
+      await session.abortTransaction();
+      
+      // Check if it's a WriteConflict error (code 112) and retry
+      if (error.code === 112 && retryCount < maxRetries - 1) {
+        retryCount++;
+        const delay = Math.min(100 * Math.pow(2, retryCount), 1000); // Exponential backoff, max 1s
+        console.log(`WriteConflict error, retrying (${retryCount}/${maxRetries - 1}) after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        session.endSession();
+        continue; // Retry the operation
       }
-    }, { status: 201 });
-
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Error creating order:', error);
-    return NextResponse.json(
-      { error: 'Failed to create order. Please try again.' },
-      { status: 500 }
-    );
-  } finally {
-    session.endSession();
+      
+      // If not a WriteConflict or max retries reached, throw the error
+      session.endSession();
+      console.error('Error creating order:', error);
+      return NextResponse.json(
+        { error: error.code === 112 
+          ? 'Order creation is temporarily unavailable due to high traffic. Please try again in a moment.' 
+          : 'Failed to create order. Please try again.' 
+        },
+        { status: 500 }
+      );
+    } finally {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      session.endSession();
+    }
   }
+  
+  // If we've exhausted all retries
+  return NextResponse.json(
+    { error: 'Failed to create order after multiple attempts. Please try again.' },
+    { status: 500 }
+  );
 }
 
 // GET /api/customer/orders - Get customer's order history

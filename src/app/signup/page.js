@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Eye, EyeOff, User, Mail, Lock, Phone, MapPin, Upload, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ToastNotification from "../components/ToastNotification"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -34,14 +35,23 @@ export default function SignupPage() {
   const [notificationMessage, setNotificationMessage] = useState("")
   const [resendLoading, setResendLoading] = useState(false)
   const [resendFeedback, setResendFeedback] = useState(null)
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("error")
+
+  const showToast = (message, type = "error") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
 
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
+      showToast("Passwords don't match!", "error")
       return false
     }
     if (formData.password.length < 8) {
-      alert("Password must be at least 8 characters long!")
+      showToast("Password must be at least 8 characters long!", "error")
       return false
     }
     return true
@@ -92,10 +102,10 @@ export default function SignupPage() {
 
       // Handle validation/server errors
       const errMsg = data?.error || data?.message || "Registration failed"
-      alert(errMsg)
+      showToast(errMsg, "error")
     } catch (error) {
       console.error("Signup error:", error)
-      alert("An error occurred. Please try again.")
+      showToast("An error occurred. Please try again.", "error")
     } finally {
       setLoading(false)
     }
@@ -103,6 +113,12 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
       <div
         aria-live="polite"
         className="fixed left-1/2 top-4 z-50 w-full max-w-xl px-4"

@@ -1,64 +1,83 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Eye, CheckCircle, Package } from "lucide-react"
+import Link from "next/link"
 
 export default function NewOrders() {
-  // Mock new orders data
-  const [orders] = useState([
-    {
-      id: "SW1001",
-      customer: {
-        name: "John Doe",
-        email: "john@example.com",
-        phone: "+92 300 1234567",
-      },
-      items: [
-        { name: "Premium Cotton Hoodie", quantity: 1, price: 4500 },
-        { name: "Casual T-Shirt", quantity: 2, price: 2200 },
-      ],
-      total: 8900,
-      orderDate: "2024-01-15T10:30:00Z",
-      shippingAddress: "123 Main St, Karachi, Pakistan",
-      paymentMethod: "Card",
-      status: "new",
-    },
-    {
-      id: "SW1002",
-      customer: {
-        name: "Jane Smith",
-        email: "jane@example.com",
-        phone: "+92 301 9876543",
-      },
-      items: [{ name: "Designer Jeans", quantity: 1, price: 5800 }],
-      total: 5800,
-      orderDate: "2024-01-15T09:15:00Z",
-      shippingAddress: "456 Oak Ave, Lahore, Pakistan",
-      paymentMethod: "COD",
-      status: "new",
-    },
-    {
-      id: "SW1003",
-      customer: {
-        name: "Mike Johnson",
-        email: "mike@example.com",
-        phone: "+92 302 5555555",
-      },
-      items: [
-        { name: "Vintage Denim Jacket", quantity: 1, price: 6200 },
-        { name: "Summer Dress", quantity: 1, price: 4200 },
-      ],
-      total: 10400,
-      orderDate: "2024-01-15T08:45:00Z",
-      shippingAddress: "789 Pine Rd, Islamabad, Pakistan",
-      paymentMethod: "Card",
-      status: "new",
-    },
-  ])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const handleAcceptOrder = (orderId) => {
-    console.log("Accepting order:", orderId)
-    // In real app, this would update the order status via API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+        if (!token) {
+          setError("Please log in to view orders")
+          setLoading(false)
+          return
+        }
+
+        const res = await fetch("/api/brand/orders", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.orders) {
+            // Filter for pending orders and transform data
+            const pendingOrders = data.orders
+              .filter((order) => order.status === "pending")
+              .map((order) => transformOrder(order))
+            setOrders(pendingOrders)
+          } else {
+            setError(data.error || "Failed to load orders")
+          }
+        } else {
+          const data = await res.json()
+          setError(data.error || "Failed to load orders")
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+        setError("An error occurred while loading orders")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [])
+
+  const transformOrder = (order) => {
+    // Format shipping address
+    const shippingAddress = order.shippingAddress
+      ? `${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}`
+      : "N/A"
+
+    return {
+      id: order.orderNumber,
+      _id: order._id,
+      customer: {
+        name: order.customer?.name || "N/A",
+        email: order.customer?.email || "N/A",
+        phone: order.customer?.phone || "N/A",
+      },
+      items: order.items.map((item) => ({
+        name: item.productSnapshot?.name || "Product",
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      total: order.brandSubtotal || order.total,
+      orderDate: order.createdAt,
+      shippingAddress,
+      paymentMethod: order.payment?.method?.replace("_", " ") || "N/A",
+      status: order.status,
+    }
   }
 
   const formatDate = (dateString) => {
@@ -71,6 +90,47 @@ export default function NewOrders() {
     })
   }
 
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">New Orders</h2>
+              <p className="text-gray-600">Pending orders waiting for your confirmation</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading orders...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">New Orders</h2>
+              <p className="text-gray-600">Pending orders waiting for your confirmation</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error loading orders</h3>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm">
       {/* Header */}
@@ -78,7 +138,7 @@ export default function NewOrders() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">New Orders</h2>
-            <p className="text-gray-600">Orders waiting for your confirmation</p>
+            <p className="text-gray-600">Pending orders waiting for your confirmation</p>
           </div>
           <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">{orders.length} New</div>
         </div>
@@ -88,8 +148,8 @@ export default function NewOrders() {
       <div className="divide-y divide-gray-200">
         {orders.length > 0 ? (
           orders.map((order) => (
-            <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div key={order._id || order.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-4 mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
@@ -139,21 +199,14 @@ export default function NewOrders() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 lg:w-48">
-                  <button
-                    onClick={() => handleAcceptOrder(order.id)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                <div className="flex flex-col gap-3 lg:w-48 lg:self-start">
+                  <Link
+                    href={`/brandDashboard/orders/${order._id || order.id}`}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    Accept Order
-                  </button>
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
                     <Eye className="w-4 h-4" />
                     View Details
-                  </button>
-                  <button className="border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">
-                    Decline
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

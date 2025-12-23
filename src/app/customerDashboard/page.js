@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   User,
   ShoppingBag,
@@ -16,6 +16,8 @@ import {
   Package,
   CheckCircle,
   Clock,
+  LayoutDashboard,
+  ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -33,6 +35,8 @@ export default function CustomerDashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [activeTab, setActiveTab] = useState("profile")
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
   const [stats, setStats] = useState({
     totalOrders: 24,
     pendingOrders: 2,
@@ -64,8 +68,26 @@ export default function CustomerDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("user")
+    localStorage.removeItem("authToken")
     router.push("/")
   }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isProfileDropdownOpen])
 
   if (!user) {
     return (
@@ -156,17 +178,38 @@ export default function CustomerDashboard() {
               </button>
 
               {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center mr-2">
-                  <span className="text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
-                </div>
+              <div className="relative" ref={profileDropdownRef}>
                 <button
-                  onClick={handleLogout}
-                  className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors"
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 border-2 border-yellow-400 rounded-lg hover:bg-yellow-50 transition-colors bg-transparent"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-yellow-600" />
+                  </div>
+                  <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
+                
+                {/* Dropdown Menu */}
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <Link
+                      href="/customerDashboard"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-yellow-50 transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

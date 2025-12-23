@@ -1,48 +1,90 @@
 "use client"
 
-import { useState } from "react"
-import { Eye, Truck, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Eye, Truck, Clock, CheckCircle, Package } from "lucide-react"
+import Link from "next/link"
 
 export default function PendingOrders() {
-  // Mock pending orders data
-  const [orders] = useState([
-    {
-      id: "SW1004",
-      customer: {
-        name: "Sarah Wilson",
-        email: "sarah@example.com",
-        phone: "+92 303 1111111",
-      },
-      items: [{ name: "Leather Jacket", quantity: 1, price: 8900 }],
-      total: 8900,
-      orderDate: "2024-01-14T14:20:00Z",
-      acceptedDate: "2024-01-14T15:30:00Z",
-      shippingAddress: "321 Elm St, Karachi, Pakistan",
-      paymentMethod: "Card",
-      status: "processing",
-      trackingNumber: null,
-    },
-    {
-      id: "SW1005",
-      customer: {
-        name: "Ahmed Ali",
-        email: "ahmed@example.com",
-        phone: "+92 304 2222222",
-      },
-      items: [{ name: "Premium Cotton Hoodie", quantity: 2, price: 4500 }],
-      total: 9000,
-      orderDate: "2024-01-13T11:45:00Z",
-      acceptedDate: "2024-01-13T12:00:00Z",
-      shippingAddress: "654 Maple Dr, Lahore, Pakistan",
-      paymentMethod: "COD",
-      status: "preparing",
-      trackingNumber: null,
-    },
-  ])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const handleShipOrder = (orderId) => {
-    console.log("Shipping order:", orderId)
-    // In real app, this would update the order status and generate tracking
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+        if (!token) {
+          setError("Please log in to view orders")
+          setLoading(false)
+          return
+        }
+
+        const res = await fetch("/api/brand/orders", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.orders) {
+            // Filter for pending orders (confirmed, processing, shipped, out_for_delivery)
+            const pendingStatuses = ["confirmed", "processing", "shipped", "out_for_delivery"]
+            const pendingOrders = data.orders
+              .filter((order) => pendingStatuses.includes(order.status))
+              .map((order) => transformOrder(order))
+            setOrders(pendingOrders)
+          } else {
+            setError(data.error || "Failed to load orders")
+          }
+        } else {
+          const data = await res.json()
+          setError(data.error || "Failed to load orders")
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+        setError("An error occurred while loading orders")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [])
+
+  const transformOrder = (order) => {
+    // Format shipping address
+    const shippingAddress = order.shippingAddress
+      ? `${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}`
+      : "N/A"
+
+    // Find accepted date from status history
+    const acceptedStatus = order.statusHistory?.find((h) => h.status === "confirmed")
+    const acceptedDate = acceptedStatus?.timestamp || order.createdAt
+
+    return {
+      id: order.orderNumber,
+      _id: order._id,
+      customer: {
+        name: order.customer?.name || "N/A",
+        email: order.customer?.email || "N/A",
+        phone: order.customer?.phone || "N/A",
+      },
+      items: order.items.map((item) => ({
+        name: item.productSnapshot?.name || "Product",
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      total: order.brandSubtotal || order.total,
+      orderDate: order.createdAt,
+      acceptedDate,
+      shippingAddress,
+      paymentMethod: order.payment?.method?.replace("_", " ") || "N/A",
+      status: order.status,
+      trackingNumber: order.delivery?.trackingNumber || null,
+    }
   }
 
   const formatDate = (dateString) => {
@@ -57,15 +99,78 @@ export default function PendingOrders() {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case "processing":
-        return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Processing</span>
-      case "preparing":
+      case "confirmed":
         return (
-          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">Preparing</span>
+          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Confirmed
+          </span>
+        )
+      case "processing":
+        return (
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Package className="w-3 h-3" />
+            Processing
+          </span>
+        )
+      case "shipped":
+        return (
+          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Truck className="w-3 h-3" />
+            Shipped
+          </span>
+        )
+      case "out_for_delivery":
+        return (
+          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Truck className="w-3 h-3" />
+            Out for Delivery
+          </span>
         )
       default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Unknown</span>
+        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium capitalize">{status}</span>
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Pending Orders</h2>
+              <p className="text-gray-600">Orders being processed and prepared for shipping</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading orders...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Pending Orders</h2>
+              <p className="text-gray-600">Orders being processed and prepared for shipping</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error loading orders</h3>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -75,7 +180,7 @@ export default function PendingOrders() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Pending Orders</h2>
-            <p className="text-gray-600">Orders being processed and prepared for shipping</p>
+            <p className="text-gray-600">Active orders: confirmed, processing, shipped, and out for delivery</p>
           </div>
           <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
             {orders.length} Pending
@@ -87,8 +192,8 @@ export default function PendingOrders() {
       <div className="divide-y divide-gray-200">
         {orders.length > 0 ? (
           orders.map((order) => (
-            <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div key={order._id || order.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-4 mb-3">
                     <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
@@ -136,21 +241,17 @@ export default function PendingOrders() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 lg:w-48">
-                  <button
-                    onClick={() => handleShipOrder(order.id)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                <div className="flex flex-col gap-3 lg:w-48 lg:self-start">
+                  <Link
+                    href={`/brandDashboard/orders/${order._id || order.id}`}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
                   >
-                    <Truck className="w-4 h-4" />
-                    Mark as Shipped
-                  </button>
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
                     <Eye className="w-4 h-4" />
                     View Details
-                  </button>
+                  </Link>
                   <div className="text-center">
                     <span className="text-xs text-gray-500 flex items-center justify-center gap-1">
-                      <Clock className="w-3 h-3" />
+                      <Clock className="w-3 h-3 -mt-4" />
                       Processing since {formatDate(order.acceptedDate)}
                     </span>
                   </div>
@@ -162,7 +263,7 @@ export default function PendingOrders() {
           <div className="text-center py-12">
             <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending orders</h3>
-            <p className="text-gray-600"> Orders you&apos;ve accepted will appear here for processing</p>
+            <p className="text-gray-600">Active orders (confirmed, processing, shipped, out for delivery) will appear here</p>
           </div>
         )}
       </div>

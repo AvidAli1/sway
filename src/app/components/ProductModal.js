@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import ToastNotification from "./ToastNotification"
 import {
   X,
   Heart,
@@ -16,12 +18,17 @@ import {
 } from "lucide-react"
 
 export default function ProductModal({ product, isOpen, onClose }) {
+  const router = useRouter()
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedColor, setSelectedColor] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [activeTab, setActiveTab] = useState("description")
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const [user, setUser] = useState(null)
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("info")
 
   // Mock reviews data
   const reviews = [
@@ -55,6 +62,20 @@ export default function ProductModal({ product, isOpen, onClose }) {
     setActiveTab("description")
   }, [product])
 
+  // Initialize user from localStorage
+  useEffect(() => {
+    try {
+      const rawUser = typeof window !== "undefined" ? localStorage.getItem("user") : null
+      if (rawUser) {
+        const parsed = JSON.parse(rawUser)
+        const sessionUser = parsed?.user || parsed
+        setUser(sessionUser)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [])
+
   // Prevent background scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -69,12 +90,64 @@ export default function ProductModal({ product, isOpen, onClose }) {
 
   if (!isOpen || !product) return null
 
-  const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor) {
-      alert("Please select size and color")
+  const showToast = (message, type = "info") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
+
+  const handleAddToCart = async () => {
+    // Check if user is logged in
+    if (!user) {
+      showToast("Please log in first", "info")
+      setTimeout(() => router.push("/login"), 2000)
       return
     }
-    alert("Added to cart!")
+
+    // Check if user is a customer (brands cannot make orders)
+    if (user.role === "brand") {
+      showToast("Brands are not allowed to make orders. Please log in with a customer account.", "error")
+      return
+    }
+
+    if (!selectedSize || !selectedColor) {
+      showToast("Please select size and color", "info")
+      return
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+      if (!token) {
+        showToast("Please log in first", "info")
+        return
+      }
+
+      const res = await fetch("/api/customer/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: quantity,
+          size: selectedSize,
+          color: selectedColor,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        // Item added successfully - close modal
+        onClose()
+      } else {
+        showToast(data.error || "Failed to add item to cart", "error")
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      showToast("An error occurred while adding to cart", "error")
+    }
   }
 
   const handleBuyNow = () => {
@@ -118,12 +191,19 @@ export default function ProductModal({ product, isOpen, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
-        onClick={onClose}
+    <>
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
       />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+          onClick={onClose}
+        />
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -432,5 +512,6 @@ export default function ProductModal({ product, isOpen, onClose }) {
         </div>
       </div>
     </div>
+    </>
   )
 }

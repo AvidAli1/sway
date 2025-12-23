@@ -1,67 +1,93 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Package, Truck, CheckCircle, Clock, Eye, Star, RotateCcw } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function OrderHistory() {
+  const router = useRouter()
   const [statusFilter, setStatusFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState("all")
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalOrders: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  })
+  const [currentPage, setCurrentPage] = useState(1)
 
-  // Mock order data
-  const [orders] = useState([
-    {
-      id: "SW2001",
-      date: "2024-01-15T10:30:00Z",
-      status: "delivered",
-      total: 8900,
-      items: [
-        { name: "Premium Cotton Hoodie", quantity: 1, price: 4500, image: "/products_page/premium_hoodie.jpg" },
-        { name: "Casual T-Shirt", quantity: 2, price: 2200, image: "/products_page/oversized_tshirt.jpg" },
-      ],
-      trackingNumber: "TRK123456789",
-      deliveredDate: "2024-01-18T14:20:00Z",
-      canReview: true,
-      canReturn: true,
-    },
-    {
-      id: "SW2002",
-      date: "2024-01-12T15:45:00Z",
-      status: "shipped",
-      total: 5800,
-      items: [{ name: "Designer Jeans", quantity: 1, price: 5800, image: "/landing_page_products/designer_jeans.jpg" }],
-      trackingNumber: "TRK987654321",
-      estimatedDelivery: "2024-01-20T12:00:00Z",
-      canReview: false,
-      canReturn: false,
-    },
-    {
-      id: "SW2003",
-      date: "2024-01-10T09:15:00Z",
-      status: "processing",
-      total: 10400,
-      items: [
-        { name: "Vintage Denim Jacket", quantity: 1, price: 6200, image: "/products_page/vintage_denim_jacket.jpg" },
-        { name: "Summer Dress", quantity: 1, price: 4200, image: "/products_page/summer_floral_dress.jpg" },
-      ],
-      trackingNumber: null,
-      canReview: false,
-      canReturn: false,
-    },
-    {
-      id: "SW2004",
-      date: "2024-01-05T11:30:00Z",
-      status: "delivered",
-      total: 6400,
-      items: [
-        { name: "Graphic Print Hoodie", quantity: 1, price: 6400, image: "/products_page/graphic_print_hoodie.jpg" },
-      ],
-      trackingNumber: "TRK456789123",
-      deliveredDate: "2024-01-08T16:45:00Z",
-      canReview: true,
-      canReturn: false,
-      rating: 5,
-    },
-  ])
+  // Fetch orders from API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true)
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+        if (!token) {
+          setLoading(false)
+          return
+        }
+
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: "10",
+        })
+
+        const res = await fetch(`/api/customer/orders?${params}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.orders) {
+            setOrders(data.orders)
+            setPagination(data.pagination || {
+              currentPage: 1,
+              totalPages: 1,
+              totalOrders: data.orders.length,
+              hasNextPage: false,
+              hasPrevPage: false,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [currentPage])
+
+  // Transform API order data to match component structure
+  const transformOrder = (order) => ({
+    id: order.orderNumber,
+    _id: order._id,
+    date: order.createdAt,
+    status: order.status,
+    total: order.total,
+    items: order.items.map((item) => ({
+      name: item.productSnapshot?.name || "Product",
+      quantity: item.quantity,
+      price: item.price,
+      image: item.productSnapshot?.thumbnail?.SD || item.productSnapshot?.images?.[0]?.SD || "/placeholder.svg",
+      size: item.size,
+      color: item.color,
+    })),
+    trackingNumber: order.delivery?.trackingNumber || order.trackingNumber || null,
+    deliveredDate: order.delivery?.actualDelivery || order.statusHistory?.find((h) => h.status === "delivered")?.timestamp || null,
+    estimatedDelivery: order.delivery?.estimatedDelivery || null,
+    canReview: order.status === "delivered" && order.reviewStatus === "pending",
+    canReturn: order.status === "delivered",
+  })
+
+  const transformedOrders = orders.map(transformOrder)
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -94,12 +120,26 @@ export default function OrderHistory() {
             Delivered
           </span>
         )
+      case "pending":
+        return (
+          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Pending
+          </span>
+        )
+      case "cancelled":
+        return (
+          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+            <Package className="w-3 h-3" />
+            Cancelled
+          </span>
+        )
       default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Unknown</span>
+        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium capitalize">{status}</span>
     }
   }
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = transformedOrders.filter((order) => {
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
 
     const orderDate = new Date(order.date)
@@ -138,9 +178,11 @@ export default function OrderHistory() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
             >
               <option value="all">All Status</option>
+              <option value="pending">Pending</option>
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>
               <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
             </select>
             <select
               value={timeFilter}
@@ -158,7 +200,12 @@ export default function OrderHistory() {
 
       {/* Orders List */}
       <div className="divide-y divide-gray-200">
-        {filteredOrders.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading orders...</p>
+          </div>
+        ) : filteredOrders.length > 0 ? (
           filteredOrders.map((order) => (
             <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -172,9 +219,9 @@ export default function OrderHistory() {
                     <div>
                       <p className="text-sm text-gray-600">Order Date: {formatDate(order.date)}</p>
                       {order.deliveredDate && (
-                        <p className="text-sm text-gray-600">Delivered: {formatDate(order.deliveredDate)}</p>
+                        <p className="text-sm text-gray-600">Delivery Date: {formatDate(order.deliveredDate)}</p>
                       )}
-                      {order.estimatedDelivery && (
+                      {!order.deliveredDate && order.estimatedDelivery && (
                         <p className="text-sm text-gray-600">Est. Delivery: {formatDate(order.estimatedDelivery)}</p>
                       )}
                     </div>
@@ -209,22 +256,25 @@ export default function OrderHistory() {
                 </div>
 
                 <div className="flex flex-col gap-2 lg:w-48">
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                  <Link
+                    href={`/customerDashboard/orders/${order._id || order.id}`}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                  >
                     <Eye className="w-4 h-4" />
                     View Details
-                  </button>
+                  </Link>
 
-                  {order.trackingNumber && (
+                  {(order.status === "pending" || order.status === "processing" || order.status === "shipped" || order.trackingNumber) && (
                     <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
                       <Truck className="w-4 h-4" />
                       Track Order
                     </button>
                   )}
 
-                  {order.canReview && !order.rating && (
+                  {order.status === "delivered" && (
                     <button className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2">
                       <Star className="w-4 h-4" />
-                      Write Review
+                      Leave a Review
                     </button>
                   )}
 
@@ -247,12 +297,40 @@ export default function OrderHistory() {
                 ? "Try adjusting your filters"
                 : "Start shopping to see your orders here"}
             </p>
-            <button className="bg-yellow-400 text-black px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors font-medium">
+            <Link
+              href="/products"
+              className="inline-block bg-yellow-400 text-black px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors font-medium"
+            >
               Start Shopping
-            </button>
+            </Link>
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && pagination.totalPages > 1 && (
+        <div className="p-6 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalOrders} total orders)
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={!pagination.hasPrevPage}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              disabled={!pagination.hasNextPage}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

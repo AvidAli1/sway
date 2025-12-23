@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Package,
   ShoppingBag,
@@ -14,6 +14,9 @@ import {
   Bell,
   Settings,
   LogOut,
+  User,
+  LayoutDashboard,
+  ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -30,11 +33,13 @@ export default function BrandDashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [activeTab, setActiveTab] = useState("products")
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
   const [stats, setStats] = useState({
     totalProducts: 45,
-    newOrders: 12,
-    pendingOrders: 8,
-    deliveredOrders: 156,
+    newOrders: 0,
+    pendingOrders: 0,
+    deliveredOrders: 0,
     totalRevenue: 125000,
     avgRating: 4.6,
     totalReviews: 89,
@@ -60,10 +65,77 @@ export default function BrandDashboard() {
     }
   }, [router])
 
+  // Fetch orders and calculate stats
+  useEffect(() => {
+    const fetchOrdersAndCalculateStats = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+        if (!token) return
+
+        const res = await fetch("/api/brand/orders", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.orders) {
+            const orders = data.orders
+
+            // Calculate stats from orders
+            const newOrders = orders.filter((order) => order.status === "pending").length
+            const pendingStatuses = ["confirmed", "processing", "shipped", "out_for_delivery"]
+            const pendingOrders = orders.filter((order) => pendingStatuses.includes(order.status)).length
+            const deliveredOrders = orders.filter((order) => order.status === "delivered").length
+
+            // Calculate total revenue from delivered orders
+            const totalRevenue = orders
+              .filter((order) => order.status === "delivered")
+              .reduce((sum, order) => sum + (order.brandSubtotal || order.total || 0), 0)
+
+            setStats((prev) => ({
+              ...prev,
+              newOrders,
+              pendingOrders,
+              deliveredOrders,
+              totalRevenue,
+            }))
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching orders for stats:", error)
+        // Keep default stats on error
+      }
+    }
+
+    if (user) {
+      fetchOrdersAndCalculateStats()
+    }
+  }, [user])
+
   const handleLogout = () => {
     localStorage.removeItem("user")
+    localStorage.removeItem("authToken")
     router.push("/")
   }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isProfileDropdownOpen])
 
   if (!user) {
     return (
@@ -148,17 +220,38 @@ export default function BrandDashboard() {
               </button>
 
               {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center mr-2">
-                  <span className="text-sm font-semibold text-black">{(user.brand_name || user.name)?.[0] || "B"}</span>
-                </div>
+              <div className="relative" ref={profileDropdownRef}>
                 <button
-                  onClick={handleLogout}
-                  className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors"
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 border-2 border-yellow-400 rounded-lg hover:bg-yellow-50 transition-colors bg-transparent"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-yellow-600" />
+                  </div>
+                  <span className="hidden md:block text-sm font-medium text-gray-900">{user.brand_name || user.name}</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
+                
+                {/* Dropdown Menu */}
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <Link
+                      href="/brandDashboard"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-yellow-50 transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center space-x-3 px-4 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
