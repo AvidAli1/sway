@@ -129,7 +129,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
             </div>
 
             {/* Card Container */}
-            <div className="flex-1 relative w-full px-4 pb-4 overflow-hidden">
+            <div className="flex-1 relative w-full px-8 pb-8 overflow-hidden">
                 <div
                     ref={cardRef}
                     className="absolute inset-x-4 top-0 bottom-4 rounded-[32px] overflow-hidden shadow-none border border-gray-100 bg-white touch-none cursor-grab active:cursor-grabbing select-none"
@@ -226,19 +226,6 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                 </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="px-8 pb-4 shrink-0">
-                <div className="flex justify-between items-center mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                    <span>Discovery</span>
-                    <span>{currentIndex + 1} of {products.length}</span>
-                </div>
-                <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                        className="h-full bg-yellow-400 transition-all duration-300 ease-out"
-                        style={{ width: `${((currentIndex + 1) / products.length) * 100}%` }}
-                    ></div>
-                </div>
-            </div>
         </div>
     )
 }
