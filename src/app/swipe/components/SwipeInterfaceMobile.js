@@ -132,7 +132,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
             <div className="flex-1 relative w-full px-8 pb-8 overflow-hidden">
                 <div
                     ref={cardRef}
-                    className="absolute inset-x-4 top-0 bottom-4 rounded-[32px] overflow-hidden shadow-none border border-gray-100 bg-white touch-none cursor-grab active:cursor-grabbing select-none"
+                    className="absolute inset-x-4 top-2 bottom-20 rounded-[32px] overflow-hidden shadow-none border border-gray-100 bg-white touch-none cursor-grab active:cursor-grabbing select-none"
                     style={getCardStyle()}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
