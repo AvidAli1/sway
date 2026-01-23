@@ -64,141 +64,141 @@ export async function POST(request) {
     try {
 
       // Process order items and validate stock
-    const processedItems = [];
-    let subtotal = 0;
+      const processedItems = [];
+      let subtotal = 0;
 
-    for (const item of items) {
-      // Find product
-      const product = await Product.findById(item.productId).session(session);
+      for (const item of items) {
+        // Find product
+        const product = await Product.findById(item.productId).session(session);
 
-      if (!product) {
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json(
-          { error: `Product not found: ${item.productId}` },
-          { status: 404 }
-        );
-      }
-
-      // Check if product is active and in stock
-      if (product.status !== 'active' || !product.inStock) {
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json(
-          { error: `Product is not available: ${product.name}` },
-          { status: 400 }
-        );
-      }
-
-      // Check stock availability
-      if (product.stock < item.quantity) {
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json(
-          { error: `Insufficient stock for ${product.name}. Available: ${product.stock}` },
-          { status: 400 }
-        );
-      }
-
-      // Validate size and color if provided
-      if (item.size && !product.sizes.includes(item.size)) {
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json(
-          { error: `Invalid size for ${product.name}` },
-          { status: 400 }
-        );
-      }
-
-      if (item.color && !product.colors.includes(item.color)) {
-        await session.abortTransaction();
-        session.endSession();
-        return NextResponse.json(
-          { error: `Invalid color for ${product.name}` },
-          { status: 400 }
-        );
-      }
-
-      // Reduce stock
-      product.stock -= item.quantity;
-      if (product.stock === 0) {
-        product.inStock = false;
-      }
-      await product.save({ session });
-
-      // Populate brand for snapshot
-      await product.populate('brand', 'name businessEmail');
-
-      // Calculate item total
-      const itemTotal = product.price * item.quantity;
-      subtotal += itemTotal;
-
-      // Create processed item with snapshot
-      processedItems.push({
-        product: product._id,
-        quantity: item.quantity,
-        price: product.price,
-        originalPrice: product.originalPrice,
-        discount: product.discount,
-        size: item.size || null,
-        color: item.color || null,
-        productSnapshot: {
-          name: product.name,
-          description: product.description,
-          images: product.images,
-          thumbnail: product.thumbnail,
-          brand: {
-            name: product.brand.name,
-            businessEmail: product.brand.businessEmail,
-          },
-          sku: product.sku,
+        if (!product) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: `Product not found: ${item.productId}` },
+            { status: 404 }
+          );
         }
+
+        // Check if product is active and in stock
+        if (product.status !== 'active' || !product.inStock) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: `Product is not available: ${product.name}` },
+            { status: 400 }
+          );
+        }
+
+        // Check stock availability
+        if (product.stock < item.quantity) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: `Insufficient stock for ${product.name}. Available: ${product.stock}` },
+            { status: 400 }
+          );
+        }
+
+        // Validate size and color if provided
+        if (item.size && !product.sizes.includes(item.size)) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: `Invalid size for ${product.name}` },
+            { status: 400 }
+          );
+        }
+
+        if (item.color && !product.colors.includes(item.color)) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: `Invalid color for ${product.name}` },
+            { status: 400 }
+          );
+        }
+
+        // Reduce stock
+        product.stock -= item.quantity;
+        if (product.stock === 0) {
+          product.inStock = false;
+        }
+        await product.save({ session });
+
+        // Populate brand for snapshot
+        await product.populate('brand', 'name businessEmail');
+
+        // Calculate item total
+        const itemTotal = product.price * item.quantity;
+        subtotal += itemTotal;
+
+        // Create processed item with snapshot
+        processedItems.push({
+          product: product._id,
+          quantity: item.quantity,
+          price: product.price,
+          originalPrice: product.originalPrice,
+          discount: product.discount,
+          size: item.size || null,
+          color: item.color || null,
+          productSnapshot: {
+            name: product.name,
+            description: product.description,
+            images: product.images,
+            thumbnail: product.thumbnail,
+            brand: {
+              name: product.brand.name,
+              businessEmail: product.brand.businessEmail,
+            },
+            sku: product.sku,
+          }
+        });
+      }
+
+      // Calculate order totals
+      const shippingCost = subtotal >= 5000 ? 0 : 200; // Free shipping over 5000
+      const tax = Math.round(subtotal * 0.08); // 8% tax
+      const discount = 0; // Can be calculated based on coupon codes
+      const total = subtotal - discount + shippingCost + tax;
+
+      // Create order
+      // Generate order number: ORD-YYYYMMDD-XXXXXX
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const orderNumber = `ORD-${dateStr}-${randomNum}`;
+
+      const order = new Order({
+        orderNumber,
+        customer: user.id,
+        items: processedItems,
+        subtotal,
+        discount,
+        shippingCost,
+        tax,
+        total,
+        shippingAddress,
+        payment: {
+          method: payment.method,
+          status: payment.method === 'cash_on_delivery' ? 'pending' : payment.status || 'pending',
+          transactionId: payment.transactionId,
+          paymentGateway: payment.paymentGateway,
+        },
+        notes: {
+          customer: notes || '',
+        },
+        isGift: isGift || false,
+        giftMessage: giftMessage || '',
+        source: 'web',
+        statusHistory: [{
+          status: 'pending',
+          timestamp: new Date(),
+          note: 'Order created',
+        }]
       });
-    }
 
-    // Calculate order totals
-    const shippingCost = subtotal >= 5000 ? 0 : 200; // Free shipping over 5000
-    const tax = Math.round(subtotal * 0.08); // 8% tax
-    const discount = 0; // Can be calculated based on coupon codes
-    const total = subtotal - discount + shippingCost + tax;
-
-    // Create order
-    // Generate order number: ORD-YYYYMMDD-XXXXXX
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    const orderNumber = `ORD-${dateStr}-${randomNum}`;
-
-    const order = new Order({
-      orderNumber,
-      customer: user.id,
-      items: processedItems,
-      subtotal,
-      discount,
-      shippingCost,
-      tax,
-      total,
-      shippingAddress,
-      payment: {
-        method: payment.method,
-        status: payment.method === 'cash_on_delivery' ? 'pending' : payment.status || 'pending',
-        transactionId: payment.transactionId,
-        paymentGateway: payment.paymentGateway,
-      },
-      notes: {
-        customer: notes || '',
-      },
-      isGift: isGift || false,
-      giftMessage: giftMessage || '',
-      source: 'web',
-      statusHistory: [{
-        status: 'pending',
-        timestamp: new Date(),
-        note: 'Order created',
-      }]
-    });
-
-    await order.save({ session });
+      await order.save({ session });
 
       // Commit transaction
       await session.commitTransaction();
@@ -222,7 +222,7 @@ export async function POST(request) {
 
     } catch (error) {
       await session.abortTransaction();
-      
+
       // Check if it's a WriteConflict error (code 112) and retry
       if (error.code === 112 && retryCount < maxRetries - 1) {
         retryCount++;
@@ -232,14 +232,15 @@ export async function POST(request) {
         session.endSession();
         continue; // Retry the operation
       }
-      
+
       // If not a WriteConflict or max retries reached, throw the error
       session.endSession();
       console.error('Error creating order:', error);
       return NextResponse.json(
-        { error: error.code === 112 
-          ? 'Order creation is temporarily unavailable due to high traffic. Please try again in a moment.' 
-          : 'Failed to create order. Please try again.' 
+        {
+          error: error.code === 112
+            ? 'Order creation is temporarily unavailable due to high traffic. Please try again in a moment.'
+            : 'Failed to create order. Please try again.'
         },
         { status: 500 }
       );
@@ -250,7 +251,7 @@ export async function POST(request) {
       session.endSession();
     }
   }
-  
+
   // If we've exhausted all retries
   return NextResponse.json(
     { error: 'Failed to create order after multiple attempts. Please try again.' },
@@ -302,7 +303,7 @@ export async function GET(request) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('orderNumber items subtotal discount shippingCost tax total status payment.status createdAt delivery.estimatedDelivery')
+      .select('orderNumber items subtotal discount shippingCost tax total status payment.status createdAt delivery.estimatedDelivery reviewStatus')
       .lean();
 
     // Get total count

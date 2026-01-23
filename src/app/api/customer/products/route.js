@@ -24,40 +24,45 @@ export async function GET(request) {
     const featured = searchParams.get('featured') === 'true';
 
     // Build query - only show active products
-    const query = { 
+    const query = {
       status: 'active',
-      inStock: true 
+      inStock: true
     };
-    
+
     // Add filters
     if (category) {
-      query.category = category;
+      const categories = category.split(',');
+      if (categories.length > 1) {
+        query.category = { $in: categories };
+      } else {
+        query.category = category;
+      }
     }
-    
+
     if (subCategory) {
       query.subCategory = subCategory;
     }
-    
+
     if (gender && gender !== 'all') {
       query.gender = { $in: [gender, 'unisex'] };
     }
-    
+
     if (minPrice !== null && !isNaN(minPrice)) {
       query.price = { ...query.price, $gte: minPrice };
     }
-    
+
     if (maxPrice !== null && !isNaN(maxPrice)) {
       query.price = { ...query.price, $lte: maxPrice };
     }
-    
+
     if (brand) {
       query.brand = brand;
     }
-    
+
     if (featured) {
       query.isFeatured = true;
     }
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -109,11 +114,11 @@ export async function GET(request) {
 
     // Get filter options for UI
     const categories = await Product.distinct('category', { status: 'active' });
-    const subCategories = category ? 
-      await Product.distinct('subCategory', { status: 'active', category }) : 
+    const subCategories = category ?
+      await Product.distinct('subCategory', { status: 'active', category }) :
       await Product.distinct('subCategory', { status: 'active' });
     const brands = await Product.distinct('brand', { status: 'active' });
-    
+
     // Get price range
     const priceRange = await Product.aggregate([
       { $match: { status: 'active', inStock: true } },

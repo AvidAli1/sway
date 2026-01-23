@@ -19,6 +19,8 @@ import {
   LogOut,
   LayoutDashboard,
   ChevronDown,
+  Loader2,
+  X,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -33,6 +35,7 @@ export default function ProductDetailPage() {
   const [similarProducts, setSimilarProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [reviews, setReviews] = useState([]) // Store real reviews
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [cartItems, setCartItems] = useState([])
@@ -47,6 +50,7 @@ export default function ProductDetailPage() {
   const [toastMessage, setToastMessage] = useState("")
   const [toastVisible, setToastVisible] = useState(false)
   const [toastType, setToastType] = useState("info")
+  const [expandedImage, setExpandedImage] = useState(null)
 
   // Initialize user and cart from localStorage when running in browser
   useEffect(() => {
@@ -109,7 +113,12 @@ export default function ProductDetailPage() {
       setError(null)
       try {
         const res = await fetch(`/api/customer/products/${productId}`)
-        const data = await res.json()
+        let data
+        try {
+          data = await res.json()
+        } catch (jsonErr) {
+          throw new Error("Invalid server response")
+        }
         // Log backend response for debugging in browser console
         try {
           console.log(`GET /api/customer/products/${productId} ->`, { status: res.status, ok: res.ok, data })
@@ -134,8 +143,39 @@ export default function ProductDetailPage() {
           thumbnail: thumbnailUrl,
         })
 
-        setRelatedProducts(data.relatedProducts || [])
-        setSimilarProducts(data.similarProducts || [])
+        setRelatedProducts((data.relatedProducts || []).map(p => ({
+          id: p._id,
+          title: p.name,
+          brand: p.brand,
+          price: p.price,
+          originalPrice: p.originalPrice,
+          images: p.thumbnail?.SD || p.images?.[0]?.SD || '/placeholder.svg',
+          rating: p.ratings || 0,
+          reviews: p.numReviews || 0,
+          isSponsored: p.isFeatured,
+        })))
+        setSimilarProducts((data.similarProducts || []).map(p => ({
+          id: p._id,
+          title: p.name,
+          brand: p.brand,
+          price: p.price,
+          originalPrice: p.originalPrice,
+          images: p.thumbnail?.SD || p.images?.[0]?.SD || '/placeholder.svg',
+          rating: p.ratings || 0,
+          reviews: p.numReviews || 0,
+          isSponsored: p.isFeatured,
+        })))
+
+        // Fetch Reviews
+        try {
+          const reviewsRes = await fetch(`/api/customer/reviews?productId=${productId}`)
+          const reviewsData = await reviewsRes.json()
+          if (reviewsData.success) {
+            setReviews(reviewsData.reviews)
+          }
+        } catch (rErr) {
+          console.warn("Failed to fetch reviews", rErr)
+        }
       } catch (err) {
         console.error('Failed to fetch product:', err)
         if (mounted) setError(err.message || 'Failed to load product')
@@ -149,33 +189,17 @@ export default function ProductDetailPage() {
     return () => { mounted = false }
   }, [productId])
 
-  // Mock reviews data
-  const reviews = [
-    {
-      id: 1,
-      name: "Ahmed Khan",
-      rating: 5,
-      date: "2024-01-15",
-      comment: "Excellent quality! The fit is perfect and the material feels premium. Highly recommended!",
-      verified: true,
-    },
-    {
-      id: 2,
-      name: "Sara Ali",
-      rating: 4,
-      date: "2024-01-10",
-      comment: "Good product overall. The color is exactly as shown in the pictures. Fast delivery too.",
-      verified: true,
-    },
-    {
-      id: 3,
-      name: "Hassan Sheikh",
-      rating: 5,
-      date: "2024-01-08",
-      comment: "Amazing! This is my second purchase from this brand. Quality is consistent and great.",
-      verified: false,
-    },
-  ]
+  // Calculate real rating distribution
+  const ratingDistribution = [0, 0, 0, 0, 0]
+  reviews.forEach(r => {
+    if (r.rating >= 1 && r.rating <= 5) {
+      ratingDistribution[5 - r.rating]++ // Store 5 star at index 0
+    }
+  })
+
+  // Note: We are now using real 'reviews' state, so remove mock 'reviews' array definition if it conflicts
+  // or just ignore the mock variable.
+  // We will simply NOT define 'const reviews = [...]' mock data anymore or rename it if needed.
 
   useEffect(() => {
     if (product && product.colors.length > 0) {
@@ -186,11 +210,19 @@ export default function ProductDetailPage() {
     }
   }, [product])
 
-  if (!product) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
+      </div>
+    )
+  }
+
+  if (error || !product) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{error || "Product Not Found"}</h1>
           <Link href="/products" className="text-yellow-600 hover:text-yellow-700">
             ← Back to Products
           </Link>
@@ -252,8 +284,8 @@ export default function ProductDetailPage() {
           const transformed = data.cart.items.map((item) => ({
             id: item.product?._id || item.product,
             title: item.product?.name || "Product",
-            brand: typeof item.product?.brand === "string" 
-              ? item.product.brand 
+            brand: typeof item.product?.brand === "string"
+              ? item.product.brand
               : (item.product?.brand?.name || "Brand"),
             price: item.price,
             originalPrice: item.originalPrice || item.price,
@@ -354,7 +386,7 @@ export default function ProductDetailPage() {
                     <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -640,7 +672,7 @@ export default function ProductDetailPage() {
                     }`}
                 >
                   {tab}
-                  {tab === "reviews" && ` (${product.reviews})`}
+                  {tab === "reviews" && ` (${reviews ? reviews.length : 0})`}
                 </button>
               ))}
             </nav>
@@ -715,40 +747,47 @@ export default function ProductDetailPage() {
                           />
                         ))}
                       </div>
-                      <p className="text-sm text-gray-600">{product.reviews} reviews</p>
+                      <p className="text-sm text-gray-600">{reviews.length} reviews</p>
                     </div>
 
                     <div className="flex-1">
-                      {[5, 4, 3, 2, 1].map((rating) => (
-                        <div key={rating} className="flex items-center gap-3 mb-2">
-                          <span className="text-sm w-3">{rating}</span>
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-yellow-400 h-2 rounded-full"
-                              style={{
-                                width: `${rating === 5 ? 70 : rating === 4 ? 20 : rating === 3 ? 5 : rating === 2 ? 3 : 2}%`,
-                              }}
-                            />
+                      {[5, 4, 3, 2, 1].map((rating, idx) => {
+                        const count = ratingDistribution[idx]
+                        const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0
+                        return (
+                          <div key={rating} className="flex items-center gap-3 mb-2">
+                            <span className="text-sm w-3">{rating}</span>
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-yellow-400 h-2 rounded-full"
+                                style={{
+                                  width: `${percentage}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600 w-8">
+                              {Math.round(percentage)}%
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-600 w-8">
-                            {rating === 5 ? 70 : rating === 4 ? 20 : rating === 3 ? 5 : rating === 2 ? 3 : 2}%
-                          </span>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
 
                 {/* Individual Reviews */}
                 <div className="space-y-6">
+                  {reviews.length === 0 && (
+                    <p className="text-center text-gray-500 py-8">No reviews yet. Be the first to review!</p>
+                  )}
                   {reviews.map((review) => (
-                    <div key={review.id} className="border-b border-gray-200 pb-6">
+                    <div key={review._id || review.id} className="border-b border-gray-200 pb-6">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-900">{review.name}</h4>
-                            {review.verified && (
+                            <h4 className="font-semibold text-gray-900">{review.userName || "Customer"}</h4>
+                            {review.isVerifiedPurchase && (
                               <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
                                 <Check className="w-3 h-3" />
                                 Verified Purchase
@@ -765,11 +804,24 @@ export default function ProductDetailPage() {
                                 />
                               ))}
                             </div>
-                            <span className="text-sm text-gray-600">{review.date}</span>
+                            <span className="text-sm text-gray-600">{new Date(review.createdAt || review.date).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
                       <p className="text-gray-700">{review.comment}</p>
+                      {review.images && review.images.length > 0 && (
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {review.images.map((img, index) => (
+                            <img
+                              key={index}
+                              src={img}
+                              alt={`Review by ${review.userName}`}
+                              className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setExpandedImage(img)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -777,6 +829,27 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Image Lightbox Modal */}
+        {expandedImage && (
+          <div
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setExpandedImage(null)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-50"
+              onClick={() => setExpandedImage(null)}
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <img
+              src={expandedImage}
+              alt="Review Full Screen"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
@@ -786,7 +859,7 @@ export default function ProductDetailPage() {
               {relatedProducts.map((relatedProduct) => (
                 <Link
                   key={relatedProduct.id}
-                  href={`/product/${relatedProduct.id}`}
+                  href={`/productDetails/${relatedProduct.id}`}
                   className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-lg transition-shadow group"
                 >
                   <div className="relative">

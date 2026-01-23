@@ -16,6 +16,7 @@ import {
   User,
   LogOut,
   LayoutDashboard,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import ToastNotification from "../components/ToastNotification"
@@ -38,6 +39,8 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [productsPerPage] = useState(12)
   const [categoriesList, setCategoriesList] = useState([])
+  const [hasMore, setHasMore] = useState(true)
+  const observerTarget = useRef(null)
 
   const [filters, setFilters] = useState({
     brands: [],
@@ -51,127 +54,176 @@ export default function ProductsPage() {
 
   // Product data loaded from backend
   const [allProducts, setAllProducts] = useState([])
-  const [productsLoading, setProductsLoading] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(true)
   const [productsError, setProductsError] = useState(null)
   const lastFetchParamsRef = useRef(null)
   const hasSeededFiltersRef = useRef(false)
 
   // Fetch products from backend API (server-side filtering)
-  useEffect(() => {
-    let mounted = true
-    const buildParamsString = (filt) => {
+  // Fetch products function
+  const fetchProducts = async (page, shouldReplace) => {
+    setProductsLoading(true)
+    setProductsError(null)
+    try {
+      const p = new URLSearchParams()
       // special-case: when user selects "featured" we want a short featured-only request
       if (sortBy === 'featured') {
-        const p = new URLSearchParams()
         p.append('featured', 'true')
         p.append('limit', String(8))
-        return p.toString()
-      }
-      const params = new URLSearchParams()
-      params.append('page', String(currentPage || 1))
-      params.append('limit', String(productsPerPage || 12))
-  if (searchQuery) params.append('search', searchQuery)
-      if (filt.categories && filt.categories.length > 0) params.append('category', filt.categories.join(','))
-      if (filt.brands && filt.brands.length > 0) params.append('brands', filt.brands.join(','))
-      if (filt.sizes && filt.sizes.length > 0) params.append('sizes', filt.sizes.join(','))
-      if (filt.colors && filt.colors.length > 0) params.append('colors', filt.colors.join(','))
-      if (filt.priceRange) {
-        params.append('minPrice', String(filt.priceRange[0] || 0))
-        params.append('maxPrice', String(filt.priceRange[1] || 0))
-      }
-      if (filt.rating) params.append('rating', String(filt.rating))
-      if (filt.inStock) params.append('inStock', 'true')
-      // map UI sort option to backend sortBy + sortOrder
-      const mapSort = (s) => {
-        switch (s) {
-          case 'price-low':
-            return { sortBy: 'price', sortOrder: 'asc' }
-          case 'price-high':
-            return { sortBy: 'price', sortOrder: 'desc' }
-          case 'rating':
-            return { sortBy: 'ratings', sortOrder: 'desc' }
-          case 'newest':
-            return { sortBy: 'createdAt', sortOrder: 'desc' }
-          case 'popular':
-            return { sortBy: 'numReviews', sortOrder: 'desc' }
-          default:
-            return { sortBy: 'featured', sortOrder: 'desc' }
+      } else {
+        p.append('page', String(page))
+        p.append('limit', String(productsPerPage))
+        if (searchQuery) p.append('search', searchQuery)
+        if (filters.categories && filters.categories.length > 0) p.append('category', filters.categories.join(','))
+        if (filters.brands && filters.brands.length > 0) p.append('brands', filters.brands.join(','))
+        if (filters.sizes && filters.sizes.length > 0) p.append('sizes', filters.sizes.join(','))
+        if (filters.colors && filters.colors.length > 0) p.append('colors', filters.colors.join(','))
+        if (filters.priceRange) {
+          p.append('minPrice', String(filters.priceRange[0] || 0))
+          p.append('maxPrice', String(filters.priceRange[1] || 0))
         }
+        if (filters.rating) p.append('rating', String(filters.rating))
+        if (filters.inStock) p.append('inStock', 'true')
+
+        // map UI sort option to backend sortBy + sortOrder
+        const mapSort = (s) => {
+          switch (s) {
+            case 'price-low':
+              return { sortBy: 'price', sortOrder: 'asc' }
+            case 'price-high':
+              return { sortBy: 'price', sortOrder: 'desc' }
+            case 'rating':
+              return { sortBy: 'ratings', sortOrder: 'desc' }
+            case 'newest':
+              return { sortBy: 'createdAt', sortOrder: 'desc' }
+            case 'popular':
+              return { sortBy: 'numReviews', sortOrder: 'desc' }
+            default:
+              return { sortBy: 'featured', sortOrder: 'desc' }
+          }
+        }
+        const sortParams = mapSort(sortBy)
+        if (sortParams?.sortBy) p.append('sortBy', sortParams.sortBy)
+        if (sortParams?.sortOrder) p.append('sortOrder', sortParams.sortOrder)
       }
-      const sortParams = mapSort(sortBy)
-      if (sortParams?.sortBy) params.append('sortBy', sortParams.sortBy)
-      if (sortParams?.sortOrder) params.append('sortOrder', sortParams.sortOrder)
-      return params.toString()
-    }
 
-    const fetchProducts = async () => {
-      setProductsLoading(true)
-      setProductsError(null)
-      try {
-        const paramsString = buildParamsString(filters)
+      const paramsString = p.toString()
 
-        // If the params haven't changed since last fetch, skip (prevents duplicate calls)
-        if (lastFetchParamsRef.current === paramsString) {
-          return
-        }
-
-        const url = `/api/customer/products?${paramsString}`
-        console.debug('Fetching products with URL:', url)
-
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`)
-        const data = await res.json()
-        if (!mounted) return
-
-        // Normalize server products to UI shape
-        setAllProducts((data && Array.isArray(data.products)) ? data.products.map(p => ({
-          id: p._id,
-          title: p.name,
-          brand: (p.brand && p.brand.name) || (p.brand || ''),
-          price: p.price,
-          originalPrice: p.originalPrice,
-          image: (p.thumbnail && p.thumbnail.SD) || (p.images && p.images[0] && p.images[0].SD) || '/placeholder.svg',
-          category: p.category,
-          sizes: p.sizes || [],
-          colors: p.colors || [],
-          rating: p.ratings || 0,
-          reviews: p.numReviews || 0,
-          description: p.description || '',
-          inStock: !!p.inStock,
-          isSponsored: !!p.isFeatured,
-          tags: p.tags || [],
-        })) : [])
-
-        // If API returns filters, seed UI filters only once (to avoid refetch loop)
-        if (data && data.filters && !hasSeededFiltersRef.current) {
-          const newCategories = data.filters.categories || []
-          const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
-          setFilters((prev) => ({
-            ...prev,
-            categories: newCategories.length > 0 ? newCategories : prev.categories,
-            priceRange: newPriceRange,
-          }))
-
-          // After seeding filters, compute the params string that would result and set as lastFetched
-          const seededFilters = { ...filters, categories: newCategories.length > 0 ? newCategories : filters.categories, priceRange: newPriceRange }
-          lastFetchParamsRef.current = buildParamsString(seededFilters)
-          hasSeededFiltersRef.current = true
-        } else {
-          // normal path: mark this paramsString as last fetched
-          lastFetchParamsRef.current = paramsString
-        }
-
-      } catch (err) {
-        console.error(err)
-        setProductsError(err.message)
-      } finally {
+      // Allow fetching if page is 1 (always fresh on filter change) or if params changed
+      if (page > 1 && lastFetchParamsRef.current === paramsString) {
         setProductsLoading(false)
+        return
       }
+      lastFetchParamsRef.current = paramsString
+
+      const url = `/api/customer/products?${paramsString}`
+
+      // Prevent duplicate fetches if strictly not needed (optional, effectively handled by deps)
+      // but for infinite scroll, page changes, so params change.
+
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`)
+      const data = await res.json()
+
+      const newProducts = (data && Array.isArray(data.products)) ? data.products.map(p => ({
+        id: p._id,
+        title: p.name,
+        brand: (p.brand && p.brand.name) || (p.brand || ''),
+        price: p.price,
+        originalPrice: p.originalPrice,
+        image: (p.thumbnail && p.thumbnail.SD) || (p.images && p.images[0] && p.images[0].SD) || '/placeholder.svg',
+        category: p.category,
+        sizes: p.sizes || [],
+        colors: p.colors || [],
+        rating: p.ratings || 0,
+        reviews: p.numReviews || 0,
+        description: p.description || '',
+        inStock: !!p.inStock,
+        isSponsored: !!p.isFeatured,
+        tags: p.tags || [],
+      })) : []
+
+      if (shouldReplace) {
+        setAllProducts(newProducts)
+      } else {
+        setAllProducts(prev => {
+          // Filter out duplicates based on ID
+          const existingIds = new Set(prev.map(p => p.id))
+          const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id))
+          return [...prev, ...uniqueNewProducts]
+        })
+      }
+
+      // Update metadata
+      if (data && data.pagination) {
+        setHasMore(data.pagination.hasNextPage)
+      } else {
+        // Fallback if API doesn't send pagination info (unlikely based on request)
+        setHasMore(newProducts.length === productsPerPage)
+      }
+
+      // If API returns filters, seed UI filters only once
+      if (data && data.filters && !hasSeededFiltersRef.current) {
+        // Only update price range based on actual data bounds
+        const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
+
+        // Don't auto-select categories, just update keys if needed or rely on categoriesList
+        // setFilters updates triggered a re-fetch, which we want to avoid if possible or ensure is valid.
+
+        setFilters((prev) => ({
+          ...prev,
+          priceRange: newPriceRange,
+        }))
+        hasSeededFiltersRef.current = true
+      }
+
+    } catch (err) {
+      console.error(err)
+      setProductsError(err.message)
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+
+  // Refetched when filters change (Replace mode)
+  useEffect(() => {
+    setCurrentPage(1)
+    setProductsLoading(true) // Force loading state immediately
+    // Optional: Clear products to avoid mixing if we want a clean slate visual, 
+    // but keeping them is usually better for UX until new ones arrive.
+    // However, if the issue is "No products found" flashing, we want to ensure loading is true.
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    fetchProducts(1, true)
+  }, [filters, sortBy, searchQuery, productsPerPage])
+
+  // Refetched when page changes (Append mode)
+  useEffect(() => {
+    if (currentPage > 1) {
+      fetchProducts(currentPage, false)
+    }
+  }, [currentPage])
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !productsLoading) {
+          setCurrentPage(prev => prev + 1)
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current)
     }
 
-    fetchProducts()
-    return () => { mounted = false }
-  }, [currentPage, filters, sortBy, searchQuery, productsPerPage])
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current)
+      }
+    }
+  }, [hasMore, productsLoading])
 
   // Reflect current filters in the browser URL (so the GET request URL is visible)
   useEffect(() => {
@@ -179,7 +231,7 @@ export default function ProductsPage() {
       const params = new URLSearchParams()
       params.append('page', String(currentPage || 1))
       params.append('limit', String(productsPerPage || 12))
-  if (searchQuery) params.append('search', searchQuery)
+      if (searchQuery) params.append('search', searchQuery)
       if (filters.categories && filters.categories.length > 0) params.append('category', filters.categories.join(','))
       if (filters.brands && filters.brands.length > 0) params.append('brands', filters.brands.join(','))
       if (filters.sizes && filters.sizes.length > 0) params.append('sizes', filters.sizes.join(','))
@@ -195,27 +247,27 @@ export default function ProductsPage() {
         params.append('featured', 'true')
         params.append('limit', String(8))
       } else {
-      // map UI sort option to backend sortBy + sortOrder for URL
-      const mapSort = (s) => {
-        switch (s) {
-          case 'price-low':
-            return { sortBy: 'price', sortOrder: 'asc' }
-          case 'price-high':
-            return { sortBy: 'price', sortOrder: 'desc' }
-          case 'rating':
-            return { sortBy: 'ratings', sortOrder: 'desc' }
-          case 'newest':
-            return { sortBy: 'createdAt', sortOrder: 'desc' }
-          case 'popular':
-            return { sortBy: 'numReviews', sortOrder: 'desc' }
-          default:
-            return { sortBy: 'featured', sortOrder: 'desc' }
+        // map UI sort option to backend sortBy + sortOrder for URL
+        const mapSort = (s) => {
+          switch (s) {
+            case 'price-low':
+              return { sortBy: 'price', sortOrder: 'asc' }
+            case 'price-high':
+              return { sortBy: 'price', sortOrder: 'desc' }
+            case 'rating':
+              return { sortBy: 'ratings', sortOrder: 'desc' }
+            case 'newest':
+              return { sortBy: 'createdAt', sortOrder: 'desc' }
+            case 'popular':
+              return { sortBy: 'numReviews', sortOrder: 'desc' }
+            default:
+              return { sortBy: 'featured', sortOrder: 'desc' }
+          }
         }
+        const sortParams = mapSort(sortBy)
+        if (sortParams?.sortBy) params.append('sortBy', sortParams.sortBy)
+        if (sortParams?.sortOrder) params.append('sortOrder', sortParams.sortOrder)
       }
-  const sortParams = mapSort(sortBy)
-  if (sortParams?.sortBy) params.append('sortBy', sortParams.sortBy)
-  if (sortParams?.sortOrder) params.append('sortOrder', sortParams.sortOrder)
-  }
 
       if (typeof window !== 'undefined') {
         const newUrl = `${window.location.pathname}?${params.toString()}`
@@ -228,17 +280,9 @@ export default function ProductsPage() {
 
   const [filteredProducts, setFilteredProducts] = useState(allProducts)
 
-  // When server returns products, use them directly (server-side filtered)
-  useEffect(() => {
-    setFilteredProducts(allProducts)
-    setCurrentPage(1)
-  }, [allProducts])
-
-  // Pagination
-  const indexOfLastProduct = currentPage * productsPerPage
-  const indexOfFirstProduct = indexOfLastProduct - productsPerPage
-  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct)
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
+  // NOTE: In infinite scroll, we don't use client-side slicing. 
+  // We just render 'allProducts' which accumulates pages.
+  const currentProducts = allProducts
 
   const handleFilterChange = (filterType, value) => {
     // Special-case priceRange (it's an array [min, max]) and boolean/toggle filters
@@ -318,8 +362,8 @@ export default function ProductsPage() {
           const transformed = data.cart.items.map((item) => ({
             id: item.product?._id || item.product,
             title: item.product?.name || "Product",
-            brand: typeof item.product?.brand === "string" 
-              ? item.product.brand 
+            brand: typeof item.product?.brand === "string"
+              ? item.product.brand
               : (item.product?.brand?.name || "Brand"),
             price: item.price,
             originalPrice: item.originalPrice || item.price,
@@ -486,7 +530,7 @@ export default function ProductsPage() {
                     <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -559,7 +603,7 @@ export default function ProductsPage() {
                     Filters
                   </button>
 
-                  <div className="hidden lg:block text-sm text-gray-600">{filteredProducts.length} products found</div>
+                  <div className="hidden lg:block text-sm text-gray-600">{allProducts.length} products found</div>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -620,40 +664,23 @@ export default function ProductsPage() {
                     ))}
                   </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-12">
-                      <button
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:border-yellow-400 transition-colors"
-                      >
-                        Previous
-                      </button>
+                  {/* Infinite Scroll Loader & Sentinel */}
+                  {hasMore && (
+                    <div ref={observerTarget} className="flex justify-center items-center py-8">
+                      {productsLoading && <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />}
+                    </div>
+                  )}
 
-                      {[...Array(totalPages)].map((_, index) => (
-                        <button
-                          key={index + 1}
-                          onClick={() => setCurrentPage(index + 1)}
-                          className={`px-4 py-2 rounded-lg transition-colors ${currentPage === index + 1
-                              ? "bg-yellow-400 text-black"
-                              : "border border-gray-300 hover:border-yellow-400"
-                            }`}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
-
-                      <button
-                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:border-yellow-400 transition-colors"
-                      >
-                        Next
-                      </button>
+                  {!hasMore && allProducts.length > 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      You've reached the end of the list
                     </div>
                   )}
                 </>
+              ) : productsLoading ? (
+                <div className="flex justify-center items-center py-20">
+                  <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
+                </div>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -773,7 +800,7 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
           <span>PKR {filters.priceRange[1].toLocaleString()}</span>
         </div>
 
-        
+
       </div>
 
       {/* Colors */}

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Package, Truck, CheckCircle, Clock, Eye, Star, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ReviewModal from "./ReviewModal"
 
 export default function OrderHistory() {
   const router = useRouter()
@@ -63,7 +64,52 @@ export default function OrderHistory() {
     }
 
     fetchOrders()
+    fetchOrders()
   }, [currentPage])
+
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [selectedReviewItem, setSelectedReviewItem] = useState(null)
+  const [selectedReviewOrderId, setSelectedReviewOrderId] = useState(null)
+
+  const handleOpenReview = (orderId, item) => {
+    setSelectedReviewOrderId(orderId)
+    setSelectedReviewItem(item)
+    setIsReviewModalOpen(true)
+  }
+
+  const handleReviewSubmit = async (reviewData) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+
+    // Get user ID from local storage or decode token if needed
+    // Ideally user ID should be in the session we can pass from parent or decode here
+    // For now let's grab it from localStorage user object
+    const user = JSON.parse(localStorage.getItem("user") || "{}")
+    const userId = user.user ? user.user.id : user.id
+
+    const res = await fetch("/api/customer/reviews", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...reviewData,
+        userId,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error("Failed to submit review")
+    }
+
+    // Update local state to hide the review button immediately
+    setOrders(prevOrders => prevOrders.map(o => {
+      if (o._id === selectedReviewOrderId || o.id === selectedReviewOrderId) {
+        return { ...o, reviewStatus: 'reviewed' }
+      }
+      return o
+    }))
+  }
 
   // Transform API order data to match component structure
   const transformOrder = (order) => ({
@@ -79,11 +125,13 @@ export default function OrderHistory() {
       image: item.productSnapshot?.thumbnail?.SD || item.productSnapshot?.images?.[0]?.SD || "/placeholder.svg",
       size: item.size,
       color: item.color,
+      itemId: item.product // Ensure we capture the product ID properly
     })),
     trackingNumber: order.delivery?.trackingNumber || order.trackingNumber || null,
     deliveredDate: order.delivery?.actualDelivery || order.statusHistory?.find((h) => h.status === "delivered")?.timestamp || null,
     estimatedDelivery: order.delivery?.estimatedDelivery || null,
     canReview: order.status === "delivered" && order.reviewStatus === "pending",
+    reviewStatus: order.reviewStatus, // Pass it through
     canReturn: order.status === "delivered",
   })
 
@@ -272,10 +320,25 @@ export default function OrderHistory() {
                   )}
 
                   {order.status === "delivered" && (
-                    <button className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2">
-                      <Star className="w-4 h-4" />
-                      Leave a Review
-                    </button>
+                    <>
+                      {order.reviewStatus === "reviewed" ? (
+                        <button
+                          disabled
+                          className="bg-green-100 text-green-700 px-4 py-2 rounded-lg cursor-default flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Reviewed
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenReview(order._id, order.items[0])}
+                          className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Star className="w-4 h-4" />
+                          Leave a Review
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {order.canReturn && (
@@ -330,6 +393,17 @@ export default function OrderHistory() {
             </button>
           </div>
         </div>
+      )}
+
+
+      {selectedReviewItem && (
+        <ReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          orderItem={selectedReviewItem}
+          orderId={selectedReviewOrderId}
+          onSubmit={handleReviewSubmit}
+        />
       )}
     </div>
   )

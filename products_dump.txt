@@ -1,0 +1,6 @@
+Product 1 (from reviews) - ID: 6970e900aa902a623285e7f4
+  Not Found
+
+Product 2 (from URL) - ID: 697129bd92f10d11e02d0770
+  Name: Ralph Lauren Cozy Fleece Hoodie
+  Title: undefined
