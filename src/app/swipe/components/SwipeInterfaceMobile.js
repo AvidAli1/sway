@@ -123,14 +123,14 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
 
         if (isVertical && isUp && (Math.abs(y) > threshold || (isFlick && y < 0))) {
             // Cart (Up)
-            animateSwipe(endX, -1500, 200, () => onAddToCart(currentProduct))
+            animateSwipe(endX, -1500, 400, () => onAddToCart(currentProduct), 'up')
         } else if (!isVertical && (Math.abs(x) > threshold || isFlick)) {
             if (x > 0) {
                 // Bucket (Right)
-                animateSwipe(1500, endY, 200, () => onAddToBucket(currentProduct))
+                animateSwipe(1500, endY, 400, () => onAddToBucket(currentProduct), 'right')
             } else {
                 // Pass (Left)
-                animateSwipe(-1500, endY, 200, null)
+                animateSwipe(-1500, endY, 400, null, 'left')
             }
         } else {
             // Reset position (rubber band effect)
@@ -142,12 +142,17 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         }
     }
 
-    const animateSwipe = (endX, endY, duration = 300, actionCallback) => {
+    const animateSwipe = (endX, endY, duration = 300, actionCallback, direction) => {
         setIsAnimating(true)
         if (cardRef.current) {
             cardRef.current.style.transition = `transform ${duration}ms ease-out`
             cardRef.current.style.transform = `translate(${endX}px, ${endY}px) rotate(${endX * 0.05}deg)`
         }
+
+        // Show indicator during exit animation
+        if (direction === 'up' && overlayRefs.current.blue) overlayRefs.current.blue.style.opacity = 0.7
+        if (direction === 'right' && overlayRefs.current.green) overlayRefs.current.green.style.opacity = 0.7
+        if (direction === 'left' && overlayRefs.current.red) overlayRefs.current.red.style.opacity = 0.7
 
         if (actionCallback) actionCallback()
 
@@ -157,9 +162,9 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     }
 
     // Triggered by buttons
-    const handleSwipeUp = () => animateSwipe(0, -1000, 200, () => onAddToCart(currentProduct))
-    const handleSwipeRight = () => animateSwipe(1000, 0, 200, () => onAddToBucket(currentProduct))
-    const handleSwipeLeft = () => animateSwipe(-1000, 0, 200, null)
+    const handleSwipeUp = () => animateSwipe(0, -1000, 500, () => onAddToCart(currentProduct), 'up')
+    const handleSwipeRight = () => animateSwipe(1000, 0, 500, () => onAddToBucket(currentProduct), 'right')
+    const handleSwipeLeft = () => animateSwipe(-1000, 0, 500, null, 'left')
 
     const nextProductIdx = () => {
         if (currentIndex < products.length - 1) {
