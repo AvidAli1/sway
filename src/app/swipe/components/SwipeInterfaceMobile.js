@@ -6,14 +6,25 @@ import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, Archive, Shoppi
 export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-    const [isDragging, setIsDragging] = useState(false)
-    const cardRef = useRef(null)
+
+    // Performance Optimization: Use refs for mutable state during high-frequency events
+    const dragOffset = useRef({ x: 0, y: 0 })
+    const isDragging = useRef(false)
     const startPos = useRef({ x: 0, y: 0 })
+    const cardRef = useRef(null)
+    const overlayRefs = useRef({ blue: null, green: null, red: null })
 
     const currentProduct = products[currentIndex]
+    const nextProduct = products[currentIndex + 1]
 
-    // Disable scrolling when this component is mounted on mobile
+    // Preload next product image to prevent flickering/loading delay
+    useEffect(() => {
+        if (nextProduct && nextProduct.image) {
+            const img = new Image()
+            img.src = nextProduct.image
+        }
+    }, [nextProduct])
+
     // Disable scrolling when this component is mounted on mobile
     useEffect(() => {
         const handleResize = () => {
@@ -23,16 +34,153 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                 document.body.style.overflow = 'auto'
             }
         }
-
-        // Initial check
         handleResize()
-
         window.addEventListener('resize', handleResize)
         return () => {
             document.body.style.overflow = 'auto'
             window.removeEventListener('resize', handleResize)
         }
     }, [])
+
+    const updateCardTransform = () => {
+        if (cardRef.current) {
+            const { x, y } = dragOffset.current
+            const rotation = x * 0.1
+            cardRef.current.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`
+
+            // Update Overlay Opacity
+            const threshold = 150 // Distance for full opacity
+
+            // Reset all first
+            if (overlayRefs.current.blue) overlayRefs.current.blue.style.opacity = 0
+            if (overlayRefs.current.green) overlayRefs.current.green.style.opacity = 0
+            if (overlayRefs.current.red) overlayRefs.current.red.style.opacity = 0
+
+            // Apply specific opacity
+            if (y < 0 && Math.abs(y) > Math.abs(x)) {
+                // Up -> Blue
+                if (overlayRefs.current.blue) {
+                    overlayRefs.current.blue.style.opacity = Math.min(Math.abs(y) / threshold, 0.6)
+                }
+            } else if (Math.abs(x) > Math.abs(y)) {
+                if (x > 0) {
+                    // Right -> Green
+                    if (overlayRefs.current.green) {
+                        overlayRefs.current.green.style.opacity = Math.min(Math.abs(x) / threshold, 0.6)
+                    }
+                } else {
+                    // Left -> Red
+                    if (overlayRefs.current.red) {
+                        overlayRefs.current.red.style.opacity = Math.min(Math.abs(x) / threshold, 0.6)
+                    }
+                }
+            }
+        }
+    }
+
+    const handleTouchStart = (e) => {
+        if (isAnimating) return
+        isDragging.current = true
+        const touch = e.touches[0]
+        startPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+        if (cardRef.current) {
+            cardRef.current.style.transition = 'none'
+        }
+    }
+
+    const handleTouchMove = (e) => {
+        if (!isDragging.current || isAnimating) return
+        const touch = e.touches[0]
+        const deltaX = touch.clientX - startPos.current.x
+        const deltaY = touch.clientY - startPos.current.y
+        dragOffset.current = { x: deltaX, y: deltaY }
+
+        // Use requestAnimationFrame for smoother updates
+        requestAnimationFrame(updateCardTransform)
+    }
+
+    const handleTouchEnd = () => {
+        if (!isDragging.current || isAnimating) return
+        isDragging.current = false
+
+        const { x, y } = dragOffset.current
+        const timeElapsed = Date.now() - startPos.current.time
+        const velocity = Math.sqrt(x * x + y * y) / timeElapsed
+        const isFlick = timeElapsed < 300 && velocity > 0.3
+        const threshold = 80 // Reduced threshold for easier swiping
+
+        // Project the current vector far out for natural "flying" feel
+        // We multiply the current offset by a large factor to send it off-screen in the same direction
+        const flyOutFactor = 20
+        const endX = x * flyOutFactor
+        const endY = y * flyOutFactor
+
+        // Decision Logic
+        // Priority: Up (Cart), Horizontal (Bucket/Pass) based on dominant axis
+
+        const isVertical = Math.abs(y) > Math.abs(x)
+        const isUp = y < -50 // Ensure it's actually moving up, not just vertical drift
+
+        if (isVertical && isUp && (Math.abs(y) > threshold || (isFlick && y < 0))) {
+            // Cart (Up)
+            animateSwipe(endX, -1500, 200, () => onAddToCart(currentProduct))
+        } else if (!isVertical && (Math.abs(x) > threshold || isFlick)) {
+            if (x > 0) {
+                // Bucket (Right)
+                animateSwipe(1500, endY, 200, () => onAddToBucket(currentProduct))
+            } else {
+                // Pass (Left)
+                animateSwipe(-1500, endY, 200, null)
+            }
+        } else {
+            // Reset position (rubber band effect)
+            dragOffset.current = { x: 0, y: 0 }
+            if (cardRef.current) {
+                cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // bouncier snapback
+                updateCardTransform()
+            }
+        }
+    }
+
+    const animateSwipe = (endX, endY, duration = 300, actionCallback) => {
+        setIsAnimating(true)
+        if (cardRef.current) {
+            cardRef.current.style.transition = `transform ${duration}ms ease-out`
+            cardRef.current.style.transform = `translate(${endX}px, ${endY}px) rotate(${endX * 0.05}deg)`
+        }
+
+        if (actionCallback) actionCallback()
+
+        setTimeout(() => {
+            nextProductIdx()
+        }, duration)
+    }
+
+    // Triggered by buttons
+    const handleSwipeUp = () => animateSwipe(0, -1000, 200, () => onAddToCart(currentProduct))
+    const handleSwipeRight = () => animateSwipe(1000, 0, 200, () => onAddToBucket(currentProduct))
+    const handleSwipeLeft = () => animateSwipe(-1000, 0, 200, null)
+
+    const nextProductIdx = () => {
+        if (currentIndex < products.length - 1) {
+            setCurrentIndex(prev => prev + 1)
+        } else {
+            setCurrentIndex(0) // Loop
+        }
+
+        // Reset card styling for next item
+        dragOffset.current = { x: 0, y: 0 }
+        setIsAnimating(false)
+        if (cardRef.current) {
+            cardRef.current.style.transition = 'none'
+            cardRef.current.style.transform = 'translate(0px, 0px) rotate(0deg)'
+        }
+
+        // Reset overlays
+        if (overlayRefs.current.blue) overlayRefs.current.blue.style.opacity = 0
+        if (overlayRefs.current.green) overlayRefs.current.green.style.opacity = 0
+        if (overlayRefs.current.red) overlayRefs.current.red.style.opacity = 0
+    }
 
     // If no more products, show end state
     if (!currentProduct) {
@@ -44,83 +192,8 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         )
     }
 
-    const handleTouchStart = (e) => {
-        if (isAnimating) return
-        setIsDragging(true)
-        const touch = e.touches[0]
-        startPos.current = { x: touch.clientX, y: touch.clientY }
-    }
-
-    const handleTouchMove = (e) => {
-        if (!isDragging || isAnimating) return
-        const touch = e.touches[0]
-        const deltaX = touch.clientX - startPos.current.x
-        const deltaY = touch.clientY - startPos.current.y
-        setDragOffset({ x: deltaX, y: deltaY })
-    }
-
-    const handleTouchEnd = () => {
-        if (!isDragging || isAnimating) return
-        setIsDragging(false)
-
-        const threshold = 100
-        const { x, y } = dragOffset
-
-        // Priority: Up (Cart), Right (Bucket), Left (Pass)
-        if (y < -threshold && Math.abs(x) < Math.abs(y)) {
-            handleSwipeUp()
-        } else if (x > threshold) {
-            handleSwipeRight()
-        } else if (x < -threshold) {
-            handleSwipeLeft()
-        } else {
-            setDragOffset({ x: 0, y: 0 })
-        }
-    }
-
-    const handleSwipeUp = () => {
-        setIsAnimating(true)
-        setDragOffset({ x: 0, y: -1000 })
-        onAddToCart(currentProduct)
-        setTimeout(() => nextProduct(), 300)
-    }
-
-    const handleSwipeRight = () => {
-        setIsAnimating(true)
-        setDragOffset({ x: 1000, y: 0 })
-        onAddToBucket(currentProduct)
-        setTimeout(() => nextProduct(), 300)
-    }
-
-    const handleSwipeLeft = () => {
-        setIsAnimating(true)
-        setDragOffset({ x: -1000, y: 0 })
-        setTimeout(() => nextProduct(), 300)
-    }
-
-    const nextProduct = () => {
-        if (currentIndex < products.length - 1) {
-            setCurrentIndex(currentIndex + 1)
-        } else {
-            setCurrentIndex(0) // Loop
-        }
-        setDragOffset({ x: 0, y: 0 })
-        setIsAnimating(false)
-    }
-
-    const getCardStyle = () => {
-        const { x, y } = dragOffset
-        const rotation = x * 0.1
-        return {
-            transform: `translate(${x}px, ${y}px) rotate(${rotation}deg)`,
-            transition: isAnimating ? "all 0.3s ease-out" : "none",
-        }
-    }
-
     return (
         <div className="h-full w-full bg-white flex flex-col">
-
-
             {/* Top Indicators */}
             <div className="flex justify-center gap-6 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10 shrink-0">
                 <span className="flex items-center gap-1">Cart <ArrowRight className="w-3 h-3" /></span>
@@ -133,19 +206,21 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                 <div
                     ref={cardRef}
                     className="absolute inset-x-4 top-2 bottom-20 rounded-[32px] overflow-hidden shadow-none border border-gray-100 bg-white touch-none cursor-grab active:cursor-grabbing select-none"
-                    style={getCardStyle()}
+                    // style prop is removed in favor of direct DOM manipulation for performance
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     onMouseDown={(e) => {
-                        setIsDragging(true)
+                        isDragging.current = true
                         startPos.current = { x: e.clientX, y: e.clientY }
+                        if (cardRef.current) cardRef.current.style.transition = 'none'
                     }}
                     onMouseMove={(e) => {
-                        if (!isDragging || isAnimating) return
+                        if (!isDragging.current || isAnimating) return
                         const deltaX = e.clientX - startPos.current.x
                         const deltaY = e.clientY - startPos.current.y
-                        setDragOffset({ x: deltaX, y: deltaY })
+                        dragOffset.current = { x: deltaX, y: deltaY }
+                        requestAnimationFrame(updateCardTransform)
                     }}
                     onMouseUp={handleTouchEnd}
                     onMouseLeave={handleTouchEnd}
@@ -156,13 +231,22 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                         src={currentProduct.image || "/placeholder.svg"}
                         alt={currentProduct.title}
                         className="w-full h-full object-cover pointer-events-none"
+                        draggable="false"
                     />
 
+                    {/* Swipe Feedback Overlays */}
+                    {/* Blue (Up - Cart) */}
+                    <div ref={el => overlayRefs.current.blue = el} className="absolute inset-0 bg-blue-500 z-10 pointer-events-none opacity-0 transition-opacity duration-75 mix-blend-overlay"></div>
+                    {/* Green (Right - Bucket) */}
+                    <div ref={el => overlayRefs.current.green = el} className="absolute inset-0 bg-green-500 z-10 pointer-events-none opacity-0 transition-opacity duration-75 mix-blend-overlay"></div>
+                    {/* Red (Left - Pass) */}
+                    <div ref={el => overlayRefs.current.red = el} className="absolute inset-0 bg-red-500 z-10 pointer-events-none opacity-0 transition-opacity duration-75 mix-blend-overlay"></div>
+
                     {/* Top Gradient for Text Readability */}
-                    <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none"></div>
+                    <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-20"></div>
 
                     {/* Top Info (Title, Price) */}
-                    <div className="absolute top-6 left-6 right-6 flex justify-between items-start text-white pointer-events-none">
+                    <div className="absolute top-6 left-6 right-6 flex justify-between items-start text-white pointer-events-none z-30">
                         <div className="max-w-[70%]">
                             <h1 className="text-3xl font-extrabold leading-tight drop-shadow-md">{currentProduct.title}</h1>
                             <p className="text-white/80 text-sm font-medium mt-1">{currentProduct.brand}</p>
@@ -174,8 +258,6 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                             )}
                         </div>
                     </div>
-
-
 
                     {/* Bottom Info (Colors, Rating) */}
                     <div className="absolute bottom-24 left-6 right-6 flex flex-col gap-6 pointer-events-none">
