@@ -307,8 +307,8 @@ export default function SwipePage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-8">
+      <div className="md:max-w-4xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-0 md:py-8 h-[calc(100vh-64px)] md:h-auto overflow-hidden md:overflow-visible flex flex-col">
+        <div className="hidden md:block text-center mb-8 shrink-0">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Discover Your Style</h2>
           <p className="text-gray-600 mb-4">Swipe up for cart, right for bucket, left to pass</p>
 
@@ -321,25 +321,33 @@ export default function SwipePage() {
           </div>
         </div>
 
-        {filteredProducts.length > 0 ? (
-          <SwipeInterface products={filteredProducts} onAddToCart={handleAddToCart} onAddToBucket={handleAddToBucket} />
-        ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Filter className="w-8 h-8 text-gray-400" />
+        <div className="flex-1 min-h-0 relative w-full flex justify-center">
+          {filteredProducts.length > 0 ? (
+            <SwipeInterface
+              products={filteredProducts}
+              onAddToCart={handleAddToCart}
+              onAddToBucket={handleAddToBucket}
+              cartCount={cartCount}
+              bucketItems={bucketItems}
+            />
+          ) : (
+            <div className="text-center py-16 w-full">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Filter className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products match your filters</h3>
+              <p className="text-gray-600 mb-4">Try adjusting your filters to see more products</p>
+              <button
+                onClick={clearFilters}
+                className="bg-yellow-400 text-black px-6 py-2 rounded-lg hover:bg-yellow-500 transition-colors"
+              >
+                Clear Filters
+              </button>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No products match your filters</h3>
-            <p className="text-gray-600 mb-4">Try adjusting your filters to see more products</p>
-            <button
-              onClick={clearFilters}
-              className="bg-yellow-400 text-black px-6 py-2 rounded-lg hover:bg-yellow-500 transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center hidden md:flex shrink-0">
           <Link href="/products" className="text-gray-600 hover:text-black transition-colors text-sm font-medium">
             Prefer traditional browsing? View all products →
           </Link>
@@ -348,7 +356,7 @@ export default function SwipePage() {
 
       <button
         onClick={() => setShowBucketModal(true)}
-        className="fixed right-6 top-1/2 transform -translate-y-1/2 w-14 h-14 bg-yellow-400 hover:bg-yellow-500 text-black rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center z-30"
+        className="flex fixed right-6 top-1/2 transform -translate-y-1/2 w-14 h-14 bg-yellow-400 hover:bg-yellow-500 text-black rounded-xl shadow-lg transition-all duration-200 items-center justify-center z-30"
         aria-label="Open swipe bucket"
       >
         <div className="relative">
@@ -422,9 +430,8 @@ export default function SwipePage() {
                   ].map((color) => (
                     <label
                       key={color.value}
-                      className={`flex flex-col items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors ${
-                        filters.colors.includes(color.value) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
-                      }`}
+                      className={`flex flex-col items-center gap-2 p-2 border rounded-lg cursor-pointer transition-colors ${filters.colors.includes(color.value) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -433,19 +440,18 @@ export default function SwipePage() {
                         className="sr-only"
                       />
                       <div
-                        className={`w-6 h-6 rounded-full border-2 ${
-                          color.value === "black"
-                            ? "bg-black border-gray-300"
-                            : color.value === "white"
-                              ? "bg-white border-gray-300"
-                              : color.value === "grey"
-                                ? "bg-gray-500 border-gray-300"
-                                : color.value === "blue"
-                                  ? "bg-blue-500 border-blue-300"
-                                  : color.value === "yellow"
-                                    ? "bg-yellow-400 border-yellow-300"
-                                    : "bg-amber-600 border-amber-300"
-                        }`}
+                        className={`w-6 h-6 rounded-full border-2 ${color.value === "black"
+                          ? "bg-black border-gray-300"
+                          : color.value === "white"
+                            ? "bg-white border-gray-300"
+                            : color.value === "grey"
+                              ? "bg-gray-500 border-gray-300"
+                              : color.value === "blue"
+                                ? "bg-blue-500 border-blue-300"
+                                : color.value === "yellow"
+                                  ? "bg-yellow-400 border-yellow-300"
+                                  : "bg-amber-600 border-amber-300"
+                          }`}
                       />
                       <span className="text-xs">{color.name}</span>
                     </label>
