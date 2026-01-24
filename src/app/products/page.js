@@ -553,12 +553,12 @@ export default function ProductsPage() {
                   )}
                 </div>
               ) : (
-                <button
-                  onClick={() => setIsLoginOpen(true)}
+                <Link
+                  href="/login"
                   className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
                 >
                   Login
-                </button>
+                </Link>
               )}
             </div>
           </div>

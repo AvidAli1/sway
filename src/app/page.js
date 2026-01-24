@@ -46,7 +46,7 @@ export default function HomePage() {
   const [toastMessage, setToastMessage] = useState("")
   const [toastVisible, setToastVisible] = useState(false)
   const [toastType, setToastType] = useState("info")
-  
+
   const profileDropdownRef = useRef(null)
 
   // Intersection Observer refs for different sections
@@ -292,9 +292,9 @@ export default function HomePage() {
               </div>
 
               {/* Wishlist */}
-              <button className="p-2 text-gray-600 hover:text-yellow-600 transition-colors">
+              <Link href="/customerDashboard" className="p-2 text-gray-600 hover:text-yellow-600 transition-colors">
                 <Heart className="w-6 h-6" />
-              </button>
+              </Link>
 
               {/* Cart */}
               <Link href="/cart" className="p-2 text-gray-600 hover:text-yellow-600 transition-colors relative">
@@ -317,7 +317,7 @@ export default function HomePage() {
                     <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, Archive, ShoppingBag, Star } from "lucide-react"
 
-export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket }) {
+export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket, user, showToast }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
 
@@ -106,8 +106,8 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         const { x, y } = dragOffset.current
         const timeElapsed = Date.now() - startPos.current.time
         const velocity = Math.sqrt(x * x + y * y) / timeElapsed
-        const isFlick = timeElapsed < 300 && velocity > 0.3
-        const threshold = 80 // Reduced threshold for easier swiping
+        const isFlick = timeElapsed < 300 && velocity > 0.8 // Increased velocity req
+        const threshold = 120 // Increased threshold for "proper" swipe
 
         // Project the current vector far out for natural "flying" feel
         // We multiply the current offset by a large factor to send it off-screen in the same direction
@@ -123,7 +123,12 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
 
         if (isVertical && isUp && (Math.abs(y) > threshold || (isFlick && y < 0))) {
             // Cart (Up)
-            animateSwipe(endX, -1500, 400, () => onAddToCart(currentProduct), 'up')
+            if (!user) {
+                if (showToast) showToast("Please log in to add items to cart", "error")
+                resetPosition()
+            } else {
+                animateSwipe(endX, -1500, 400, () => onAddToCart(currentProduct), 'up')
+            }
         } else if (!isVertical && (Math.abs(x) > threshold || isFlick)) {
             if (x > 0) {
                 // Bucket (Right)
@@ -134,11 +139,15 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
             }
         } else {
             // Reset position (rubber band effect)
-            dragOffset.current = { x: 0, y: 0 }
-            if (cardRef.current) {
-                cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // bouncier snapback
-                updateCardTransform()
-            }
+            resetPosition()
+        }
+    }
+
+    const resetPosition = () => {
+        dragOffset.current = { x: 0, y: 0 }
+        if (cardRef.current) {
+            cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' // bouncier snapback
+            updateCardTransform()
         }
     }
 
@@ -162,7 +171,14 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     }
 
     // Triggered by buttons
-    const handleSwipeUp = () => animateSwipe(0, -1000, 500, () => onAddToCart(currentProduct), 'up')
+    const handleSwipeUp = () => {
+        if (!user) {
+            if (showToast) showToast("Please log in to add items to cart", "error")
+            // Visual shake or something? Optional.
+            return
+        }
+        animateSwipe(0, -1000, 500, () => onAddToCart(currentProduct), 'up')
+    }
     const handleSwipeRight = () => animateSwipe(1000, 0, 500, () => onAddToBucket(currentProduct), 'right')
     const handleSwipeLeft = () => animateSwipe(-1000, 0, 500, null, 'left')
 

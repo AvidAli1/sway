@@ -295,19 +295,19 @@ export default function SwipePage() {
                   <span className="text-xs sm:text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
                 </div>
               ) : (
-                <button
-                  onClick={() => setIsLoginOpen(true)}
+                <Link
+                  href="/login"
                   className="bg-black text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-gray-800 transition-colors text-xs sm:text-sm font-medium"
                 >
                   Login
-                </button>
+                </Link>
               )}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="md:max-w-4xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-0 md:py-8 h-[calc(100vh-64px)] md:h-auto overflow-hidden md:overflow-visible flex flex-col">
+      <div className="md:max-w-4xl md:mx-auto md:px-4 md:sm:px-6 md:lg:px-8 py-0 md:py-8 h-[calc(100dvh-64px)] md:h-auto overflow-hidden md:overflow-visible flex flex-col">
         <div className="hidden md:block text-center mb-8 shrink-0">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Discover Your Style</h2>
           <p className="text-gray-600 mb-4">Swipe up for cart, right for bucket, left to pass</p>
@@ -329,6 +329,8 @@ export default function SwipePage() {
               onAddToBucket={handleAddToBucket}
               cartCount={cartCount}
               bucketItems={bucketItems}
+              user={user}
+              showToast={showToast}
             />
           ) : (
             <div className="text-center py-16 w-full">

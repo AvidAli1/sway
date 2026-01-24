@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, ShoppingBag, Star } from "lucide-react"
 
-export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBucket }) {
+export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBucket, user, showToast }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -58,6 +58,11 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
     }
 
     const handleSwipeUp = () => {
+        if (!user) {
+            if (showToast) showToast("Please log in to add items to cart", "error")
+            setDragOffset({ x: 0, y: 0 })
+            return
+        }
         setIsAnimating(true)
         setDragOffset({ x: 0, y: -1000 })
         onAddToCart(currentProduct)

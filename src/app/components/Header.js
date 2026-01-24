@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Search, ShoppingCart, Heart, Grid, Layers } from "lucide-react"
 
 export default function Header({ user, onLoginClick, cartCount, onViewModeChange, viewMode }) {
@@ -50,19 +51,19 @@ export default function Header({ user, onLoginClick, cartCount, onViewModeChange
             </div>
 
             {/* Wishlist */}
-            <button className="relative p-2 text-gray-600 hover:text-black">
+            <Link href="/customerDashboard" className="relative p-2 text-gray-600 hover:text-black">
               <Heart className="w-6 h-6" />
-            </button>
+            </Link>
 
             {/* Cart */}
-            <button className="relative p-2 text-gray-600 hover:text-black">
+            <Link href="/cart" className="relative p-2 text-gray-600 hover:text-black">
               <ShoppingCart className="w-6 h-6" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
                   {cartCount}
                 </span>
               )}
-            </button>
+            </Link>
 
             {/* User Account */}
             {user ? (
@@ -73,12 +74,13 @@ export default function Header({ user, onLoginClick, cartCount, onViewModeChange
                 <span className="hidden md:block text-sm font-medium">{user.name}</span>
               </div>
             ) : (
-              <button
-                onClick={onLoginClick}
+              <Link
+                href="/login"
                 className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                onClick={onLoginClick} // Keep prop support just in case, but Link handles nav
               >
                 Login
-              </button>
+              </Link>
             )}
           </div>
         </div>
