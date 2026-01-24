@@ -10,12 +10,18 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     // Performance Optimization: Use refs for mutable state during high-frequency events
     const dragOffset = useRef({ x: 0, y: 0 })
     const isDragging = useRef(false)
+    const isAnimatingRef = useRef(false)
     const startPos = useRef({ x: 0, y: 0 })
     const cardRef = useRef(null)
     const overlayRefs = useRef({ blue: null, green: null, red: null })
 
     const currentProduct = products[currentIndex]
     const nextProduct = products[currentIndex + 1]
+
+    // Sync ref with state
+    useEffect(() => {
+        isAnimatingRef.current = isAnimating
+    }, [isAnimating])
 
     // Preload next product image to prevent flickering/loading delay
     useEffect(() => {
@@ -43,6 +49,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     }, [])
 
     const updateCardTransform = () => {
+        if (isAnimatingRef.current) return
         if (cardRef.current) {
             const { x, y } = dragOffset.current
             const rotation = x * 0.1
@@ -106,12 +113,12 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         const { x, y } = dragOffset.current
         const timeElapsed = Date.now() - startPos.current.time
         const velocity = Math.sqrt(x * x + y * y) / timeElapsed
-        const isFlick = timeElapsed < 300 && velocity > 0.8 // Increased velocity req
-        const threshold = 120 // Increased threshold for "proper" swipe
+        const isFlick = timeElapsed < 300 && velocity > 0.4
+        const threshold = 50
 
         // Project the current vector far out for natural "flying" feel
         // We multiply the current offset by a large factor to send it off-screen in the same direction
-        const flyOutFactor = 20
+        const flyOutFactor = 30
         const endX = x * flyOutFactor
         const endY = y * flyOutFactor
 
@@ -153,6 +160,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
 
     const animateSwipe = (endX, endY, duration = 300, actionCallback, direction) => {
         setIsAnimating(true)
+        isAnimatingRef.current = true
         if (cardRef.current) {
             cardRef.current.style.transition = `transform ${duration}ms ease-out`
             cardRef.current.style.transform = `translate(${endX}px, ${endY}px) rotate(${endX * 0.05}deg)`
@@ -192,6 +200,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         // Reset card styling for next item
         dragOffset.current = { x: 0, y: 0 }
         setIsAnimating(false)
+        isAnimatingRef.current = false
         if (cardRef.current) {
             cardRef.current.style.transition = 'none'
             cardRef.current.style.transform = 'translate(0px, 0px) rotate(0deg)'
