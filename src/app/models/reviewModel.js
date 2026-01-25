@@ -39,6 +39,11 @@ const reviewSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        reply: {
+            text: { type: String },
+            createdAt: { type: Date },
+            updatedAt: { type: Date }
+        },
         status: {
             type: String,
             enum: ["active", "hidden", "flagged"],

@@ -797,6 +797,20 @@ export default function ProductDetailPage() {
                           ))}
                         </div>
                       )}
+
+                      {review.reply && review.reply.text && (
+                        <div className="mt-4 bg-gray-100 p-4 rounded-lg border border-gray-200 ml-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-yellow-400 text-black text-xs px-2 py-1 rounded font-bold">
+                              {product?.brand?.name || "Brand"} Response
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(review.reply.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-gray-700">{review.reply.text}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

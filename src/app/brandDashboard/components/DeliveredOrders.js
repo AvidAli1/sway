@@ -26,6 +26,8 @@ export default function DeliveredOrders() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          cache: "no-store",
+          next: { revalidate: 0 }
         })
 
         if (res.ok) {

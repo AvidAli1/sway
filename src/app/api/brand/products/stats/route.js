@@ -39,37 +39,61 @@ export async function GET(request) {
 
     // Get product statistics
     const totalProducts = await Product.countDocuments({ brand: brand._id });
-    const activeProducts = await Product.countDocuments({ 
-      brand: brand._id, 
-      status: 'active' 
+    const activeProducts = await Product.countDocuments({
+      brand: brand._id,
+      status: 'active'
     });
-    const inactiveProducts = await Product.countDocuments({ 
-      brand: brand._id, 
-      status: 'inactive' 
+    const inactiveProducts = await Product.countDocuments({
+      brand: brand._id,
+      status: 'inactive'
     });
-    const draftProducts = await Product.countDocuments({ 
-      brand: brand._id, 
-      status: 'draft' 
+    const draftProducts = await Product.countDocuments({
+      brand: brand._id,
+      status: 'draft'
     });
-    const featuredProducts = await Product.countDocuments({ 
-      brand: brand._id, 
-      isFeatured: true 
+    const featuredProducts = await Product.countDocuments({
+      brand: brand._id,
+      isFeatured: true
     });
-    const outOfStockProducts = await Product.countDocuments({ 
-      brand: brand._id, 
-      inStock: false 
+    const outOfStockProducts = await Product.countDocuments({
+      brand: brand._id,
+      inStock: false
     });
 
     // Get category distribution
     const categoryStats = await Product.aggregate([
       { $match: { brand: brand._id } },
-      { $group: { 
-        _id: '$category', 
-        count: { $sum: 1 },
-        totalValue: { $sum: '$price' }
-      }},
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalValue: { $sum: '$price' }
+        }
+      },
       { $sort: { count: -1 } }
     ]);
+
+    // Get review stats
+    const reviewStats = await Product.aggregate([
+      { $match: { brand: brand._id } },
+      {
+        $group: {
+          _id: null,
+          totalReviews: { $sum: '$numReviews' },
+          weightedRatingSum: { $sum: { $multiply: ['$ratings', '$numReviews'] } },
+          simpleAvgRating: { $avg: '$ratings' }
+        }
+      }
+    ]);
+
+    const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0;
+    let avgRating = 0;
+    if (totalReviews > 0) {
+      avgRating = reviewStats[0].weightedRatingSum / totalReviews;
+    } else if (reviewStats.length > 0) {
+      avgRating = reviewStats[0].simpleAvgRating || 0;
+    }
+    avgRating = Math.round(avgRating * 10) / 10;
 
     // Get recent products
     const recentProducts = await Product.find({ brand: brand._id })
@@ -87,6 +111,8 @@ export async function GET(request) {
         draftProducts,
         featuredProducts,
         outOfStockProducts,
+        totalReviews,
+        avgRating,
         categoryStats,
         recentProducts
       }

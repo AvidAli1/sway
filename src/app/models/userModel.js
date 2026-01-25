@@ -40,6 +40,13 @@ const UserSchema = new mongoose.Schema(
     },
     emailVerifiedAt: {
       type: Date,
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
+    avatar: {
+      type: String, // URL
     }
   },
   { timestamps: true }

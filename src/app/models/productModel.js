@@ -144,6 +144,10 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    salesCount: {
+        type: Number,
+        default: 0,
+    },
     isFeatured: {
         type: Boolean,
         default: false,

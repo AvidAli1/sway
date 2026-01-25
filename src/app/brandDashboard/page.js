@@ -36,14 +36,14 @@ export default function BrandDashboard() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef(null)
   const [stats, setStats] = useState({
-    totalProducts: 45,
+    totalProducts: 0,
     newOrders: 0,
     pendingOrders: 0,
     deliveredOrders: 0,
-    totalRevenue: 125000,
-    avgRating: 4.6,
-    totalReviews: 89,
-    pendingReturns: 3,
+    totalRevenue: 0,
+    avgRating: 0,
+    totalReviews: 0,
+    pendingReturns: 0,
   })
 
   // Mock user data - in real app, this would come from authentication
@@ -67,19 +67,26 @@ export default function BrandDashboard() {
 
   // Fetch orders and calculate stats
   useEffect(() => {
-    const fetchOrdersAndCalculateStats = async () => {
+    const fetchDashboardData = async () => {
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
         if (!token) return
 
-        const res = await fetch("/api/brand/orders", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        // Fetch Orders
+        const ordersPromise = fetch("/api/brand/orders", {
+          headers: { Authorization: `Bearer ${token}` },
         })
 
-        if (res.ok) {
-          const data = await res.json()
+        // Fetch Product Stats
+        const productsPromise = fetch("/api/brand/products/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        const [ordersRes, productsRes] = await Promise.all([ordersPromise, productsPromise])
+
+        // Process Orders
+        if (ordersRes.ok) {
+          const data = await ordersRes.json()
           if (data.success && data.orders) {
             const orders = data.orders
 
@@ -103,14 +110,27 @@ export default function BrandDashboard() {
             }))
           }
         }
+
+        // Process Product Stats
+        if (productsRes.ok) {
+          const data = await productsRes.json()
+          if (data.success && data.stats) {
+            setStats((prev) => ({
+              ...prev,
+              totalProducts: data.stats.totalProducts || 0,
+              avgRating: data.stats.avgRating || 0,
+              totalReviews: data.stats.totalReviews || 0
+            }))
+          }
+        }
+
       } catch (error) {
-        console.error("Error fetching orders for stats:", error)
-        // Keep default stats on error
+        console.error("Error fetching dashboard stats:", error)
       }
     }
 
     if (user) {
-      fetchOrdersAndCalculateStats()
+      fetchDashboardData()
     }
   }, [user])
 
@@ -231,7 +251,7 @@ export default function BrandDashboard() {
                   <span className="hidden md:block text-sm font-medium text-gray-900">{user.brand_name || user.name}</span>
                   <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
-                
+
                 {/* Dropdown Menu */}
                 {isProfileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -319,9 +339,8 @@ export default function BrandDashboard() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${
-                      activeTab === item.id ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-100"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${activeTab === item.id ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-100"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-5 h-5" />

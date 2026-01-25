@@ -119,8 +119,9 @@ export async function POST(request) {
           );
         }
 
-        // Reduce stock
+        // Reduce stock & increment sales
         product.stock -= item.quantity;
+        product.salesCount = (product.salesCount || 0) + item.quantity;
         if (product.stock === 0) {
           product.inStock = false;
         }

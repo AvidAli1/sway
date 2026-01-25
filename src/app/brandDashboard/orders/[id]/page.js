@@ -353,7 +353,7 @@ export default function BrandOrderDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <ToastNotification message={toastMessage} isVisible={toastVisible} onClose={() => setToastVisible(false)} type={toastType} />
-      
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -446,7 +446,7 @@ export default function BrandOrderDetailsPage() {
             <form onSubmit={handleStatusUpdate} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Status * <span className="text-xs text-gray-500 font-normal">(Current: {order.status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())})</span>
+                  New Status * <span className="text-xs text-gray-500 font-normal">(Current: {order.status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())})</span>
                 </label>
                 <select
                   value={statusForm.status}
@@ -457,7 +457,7 @@ export default function BrandOrderDetailsPage() {
                   <option value="">Select new status...</option>
                   {validNextStatuses.map((status) => (
                     <option key={status} value={status}>
-                      {status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      {status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                     </option>
                   ))}
                 </select>
@@ -701,11 +701,15 @@ export default function BrandOrderDetailsPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Method:</span>
-                    <span className="text-gray-900 capitalize">{order.payment?.method?.replace("_", " ") || "N/A"}</span>
+                    <span className="text-gray-900 capitalize">{order.payment?.method?.replace(/_/g, " ") || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status:</span>
-                    <span className="text-gray-900 capitalize">{order.payment?.status || "N/A"}</span>
+                    <span className="text-gray-900 capitalize">
+                      {order.status === "delivered" && order.payment?.method === "cash_on_delivery"
+                        ? "Paid"
+                        : order.payment?.status || "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>

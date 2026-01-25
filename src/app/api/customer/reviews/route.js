@@ -25,7 +25,7 @@ export async function GET(request) {
 
         const reviews = await Review.find(query)
             .populate('product', 'name thumbnail slug brand')
-            .populate('user', 'name')
+            .populate('user', 'name avatar gender')
             .sort({ createdAt: -1 });
 
         return NextResponse.json({ success: true, reviews });

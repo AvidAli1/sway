@@ -47,7 +47,7 @@ export default function ProductsList() {
             category: p.category || '',
             stock: p.stock != null ? p.stock : (p.inStock ? 1 : 0),
             status: p.status || (p.inStock ? 'active' : 'out_of_stock'),
-            sales: p.sales || 0,
+            sales: p.salesCount || 0,
             rating: p.ratings || 0,
             reviews: p.numReviews || 0,
             raw: p,
@@ -151,7 +151,7 @@ export default function ProductsList() {
           category: p.category || '',
           stock: p.stock != null ? p.stock : (p.inStock ? 1 : 0),
           status: p.status || (p.inStock ? 'active' : 'out_of_stock'),
-          sales: p.sales || 0,
+          sales: p.salesCount || 0,
           rating: p.ratings || 0,
           reviews: p.numReviews || 0,
           raw: p,
@@ -282,7 +282,7 @@ export default function ProductsList() {
                       <Eye className="w-4 h-4" />
                       View
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleEditClick(product)}
                       className="flex-1 bg-blue-100 text-blue-700 py-2 px-3 rounded text-sm hover:bg-blue-200 transition-colors flex items-center justify-center gap-1"
                     >
@@ -437,7 +437,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
   // Delete image
   const handleDeleteImage = async (index) => {
     if (!productDetails) return
-    
+
     setIsDeletingImages(true)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
@@ -471,7 +471,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
   // Delete all selected images
   const handleDeleteAllImages = async () => {
     if (!productDetails || images.length === 0) return
-    
+
     setIsDeletingImages(true)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
@@ -511,11 +511,11 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
       const formData = new FormData()
-      
+
       Array.from(files).forEach(file => {
         formData.append('images', file)
       })
-      
+
       if (index !== null) {
         formData.append('index', index.toString())
       }
@@ -581,7 +581,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
   const handleDrop = async (e, dropIndex) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null)
       setDragOverIndex(null)
@@ -592,7 +592,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
-      
+
       // Use the new PUT endpoint to reorder images server-side
       const reorderRes = await fetch(
         `/api/brand/products/${product.id}/images?fromIndex=${draggedIndex}&toIndex=${dropIndex}`,
@@ -655,7 +655,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
       formDataObj.append('careInstructions', formData.careInstructions || '')
       formDataObj.append('isFeatured', formData.isFeatured ? 'true' : 'false')
       formDataObj.append('status', formData.status || 'active')
-      
+
       // Add arrays as JSON strings
       formDataObj.append('sizes', JSON.stringify(formData.sizes || []))
       formDataObj.append('colors', JSON.stringify(formData.colors || []))
@@ -759,7 +759,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
 
               {/* Horizontal Scrollable Image Gallery */}
               {images.length > 0 ? (
-                <div 
+                <div
                   className="flex gap-4 overflow-x-auto pb-4"
                   onDragOver={(e) => {
                     e.preventDefault()
@@ -786,7 +786,7 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
                         {showDropZoneBefore && (
                           <div className="flex-shrink-0 w-2 h-32 bg-yellow-400 rounded border-2 border-yellow-500 animate-pulse mr-2" />
                         )}
-                        
+
                         <div
                           draggable={!isReordering}
                           onDragStart={(e) => !isReordering && handleDragStart(e, index)}
@@ -794,15 +794,13 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
                           onDragLeave={handleDragLeave}
                           onDragEnd={handleDragEnd}
                           onDrop={(e) => !isReordering && handleDrop(e, index)}
-                          className={`relative flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                            isDropTarget 
-                              ? 'border-yellow-400 border-dashed scale-105 shadow-lg' 
+                          className={`relative flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 transition-all duration-200 ${isDropTarget
+                              ? 'border-yellow-400 border-dashed scale-105 shadow-lg'
                               : 'border-gray-200'
-                          } ${
-                            isDragging 
-                              ? 'opacity-30 cursor-grabbing scale-95' 
+                            } ${isDragging
+                              ? 'opacity-30 cursor-grabbing scale-95'
                               : 'cursor-grab hover:border-gray-300'
-                          }`}
+                            }`}
                         >
                           <img
                             src={img.SD || img.HD || '/placeholder.svg'}
