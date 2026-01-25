@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/utils/dbConnect';
 import Cart from '@/app/models/cartModel';
 import Product from '@/app/models/productModel';
+import Brand from '@/app/models/brandModel';
 import { authMiddleware } from '@/utils/authMiddleware';
 
 // GET /api/customer/cart - Get customer's cart
@@ -50,9 +51,9 @@ export async function GET(request) {
         unavailableItems.push({
           itemId: item._id,
           productName: item.product?.name || 'Unknown Product',
-          reason: !item.product ? 'Product not found' : 
-                  item.product.status !== 'active' ? 'Product unavailable' : 
-                  'Out of stock'
+          reason: !item.product ? 'Product not found' :
+            item.product.status !== 'active' ? 'Product unavailable' :
+              'Out of stock'
         });
       } else {
         // Check for price changes

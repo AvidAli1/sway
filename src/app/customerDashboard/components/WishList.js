@@ -1,72 +1,126 @@
 "use client"
 
-import { useState } from "react"
-import { Heart, ShoppingCart, Trash2, Eye, Filter } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Heart, ShoppingCart, Trash2, Eye, Filter, Check } from "lucide-react"
+import { useRouter } from "next/navigation"
+import ToastNotification from "../../components/ToastNotification"
+import ProductQuickViewModal from "../../swipe/components/ProductQuickViewModal"
+import { useCart } from "../../context/CartContext"
 
-export default function Wishlist() {
+export default function Wishlist({ user }) {
+  const { updateCartCount, cartProductIds } = useCart()
+  const router = useRouter()
   const [sortBy, setSortBy] = useState("recent")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [wishlistItems, setWishlistItems] = useState([])
 
-  // Mock wishlist data
-  const [wishlistItems, setWishlistItems] = useState([
-    {
-      id: 1,
-      name: "Premium Cotton Hoodie",
-      brand: "Urban Style",
-      price: 4500,
-      originalPrice: 5500,
-      image: "/products_page/premium_hoodie.jpg",
-      category: "Hoodies",
-      inStock: true,
-      addedDate: "2024-01-14T10:30:00Z",
-      rating: 4.8,
-      reviews: 12,
-    },
-    {
-      id: 2,
-      name: "Designer Jeans",
-      brand: "Denim Co",
-      price: 5800,
-      image: "/landing_page_products/designer_jeans.jpg",
-      category: "Jeans",
-      inStock: true,
-      addedDate: "2024-01-12T15:45:00Z",
-      rating: 4.9,
-      reviews: 15,
-    },
-    {
-      id: 3,
-      name: "Summer Dress",
-      brand: "Floral Fashion",
-      price: 4200,
-      image: "/products_page/summer_floral_dress.jpg",
-      category: "Dresses",
-      inStock: false,
-      addedDate: "2024-01-10T09:15:00Z",
-      rating: 4.4,
-      reviews: 7,
-    },
-    {
-      id: 4,
-      name: "Vintage Denim Jacket",
-      brand: "Retro Wear",
-      price: 6200,
-      image: "/products_page/vintage_denim_jacket.jpg",
-      category: "Jackets",
-      inStock: true,
-      addedDate: "2024-01-08T11:30:00Z",
-      rating: 4.6,
-      reviews: 8,
-    },
-  ])
 
-  const handleRemoveFromWishlist = (itemId) => {
+  const [toastMessage, setToastMessage] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastType, setToastType] = useState("info")
+
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+
+  useEffect(() => {
+    if (user && (user._id || user.id)) {
+      const uId = user._id || user.id
+      fetch(`/api/customer/wishlist?userId=${uId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.wishlist) {
+            const items = data.wishlist
+              .filter(item => typeof item === 'object')
+              .map(item => ({
+                id: item._id,
+                name: item.name,
+                brand: item.brand?.name || "Brand",
+                price: item.price,
+                originalPrice: item.originalPrice,
+                image: item.thumbnail?.SD || item.images?.[0]?.SD || "/placeholder.svg",
+                category: item.category,
+                inStock: item.inStock,
+                addedDate: item.createdAt || new Date().toISOString(),
+                rating: item.ratings || 0,
+                reviews: item.numReviews || 0
+              }))
+            setWishlistItems(items)
+          }
+        })
+        .catch(e => console.error("Wishlist fetch error", e))
+    }
+  }, [user])
+
+  const handleRemoveFromWishlist = async (itemId) => {
     setWishlistItems((items) => items.filter((item) => item.id !== itemId))
+
+    if (user) {
+      try {
+        const uId = user._id || user.id
+        await fetch('/api/customer/wishlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uId, productId: itemId })
+        })
+        showToast("Removed from wishlist", "success")
+      } catch (e) {
+        console.error("Remove failed", e)
+      }
+    }
   }
 
-  const handleAddToCart = (itemId) => {
-    console.log("Adding to cart:", itemId)
-    // In real app, this would add item to cart
+  const showToast = (message, type = "info") => {
+    setToastMessage(message)
+    setToastType(type)
+    setToastVisible(true)
+  }
+
+  const handleAddToCart = async (e, item, options = {}) => {
+    e.stopPropagation()
+
+    if (!user) {
+      showToast("Please login first", "error")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("authToken")
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const res = await fetch('/api/customer/cart', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          productId: item.id,
+          quantity: 1,
+          size: options.selectedSize || undefined,
+          color: options.selectedColor || undefined
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        updateCartCount()
+      } else {
+        // Only show error toasts, not success (success changes button state)
+        showToast(data.error || "Failed to add to cart", "error")
+      }
+    } catch (err) {
+      console.error(err)
+      showToast("Error adding to cart", "error")
+    }
+  }
+
+  const handleQuickView = (e, item) => {
+    e.stopPropagation()
+    setSelectedProduct({
+      ...item,
+      title: item.name,
+      images: [item.image]
+    })
+    setIsModalOpen(true)
   }
 
   const formatDate = (dateString) => {
@@ -93,10 +147,15 @@ export default function Wishlist() {
       }
     })
 
-  const categories = [...new Set(wishlistItems.map((item) => item.category))]
-
   return (
     <div className="bg-white rounded-lg shadow-sm">
+      <ToastNotification
+        message={toastMessage}
+        isVisible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
+
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -111,21 +170,6 @@ export default function Wishlist() {
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-            >
-              <option value="all">All Categories</option>
-              {categories.map((category) => (
-                <option key={category} value={category.toLowerCase()}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -146,7 +190,8 @@ export default function Wishlist() {
             {filteredAndSortedItems.map((item) => (
               <div
                 key={item.id}
-                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                onClick={() => router.push(`/productDetails/${item.id}`)}
+                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 <div className="relative">
                   <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-full h-48 object-cover" />
@@ -158,7 +203,7 @@ export default function Wishlist() {
                     </div>
                   )}
                   <button
-                    onClick={() => handleRemoveFromWishlist(item.id)}
+                    onClick={(e) => { e.stopPropagation(); handleRemoveFromWishlist(item.id); }}
                     className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
                   >
                     <Heart className="w-4 h-4 text-red-500 fill-current" />
@@ -194,13 +239,23 @@ export default function Wishlist() {
 
                   <div className="flex gap-2">
                     {item.inStock ? (
-                      <button
-                        onClick={() => handleAddToCart(item.id)}
-                        className="flex-1 bg-yellow-400 text-black py-2 px-3 rounded text-sm hover:bg-yellow-500 transition-colors flex items-center justify-center gap-1 font-medium"
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                        Add to Cart
-                      </button>
+                      cartProductIds?.has(item.id) ? (
+                        <button
+                          disabled
+                          className="flex-1 bg-green-600 text-white py-2 px-3 rounded text-sm flex items-center justify-center gap-1 font-medium cursor-default transition-all duration-200"
+                        >
+                          <Check className="w-4 h-4" />
+                          Added to Cart
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleAddToCart(e, item)}
+                          className="flex-1 bg-yellow-400 text-black py-2 px-3 rounded text-sm hover:bg-yellow-500 transition-colors flex items-center justify-center gap-1 font-medium"
+                        >
+                          <ShoppingCart className="w-4 h-4" />
+                          Add to Cart
+                        </button>
+                      )
                     ) : (
                       <button
                         disabled
@@ -210,11 +265,14 @@ export default function Wishlist() {
                         Out of Stock
                       </button>
                     )}
-                    <button className="bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors flex items-center justify-center">
+                    <button
+                      onClick={(e) => handleQuickView(e, item)}
+                      className="bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors flex items-center justify-center"
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleRemoveFromWishlist(item.id)}
+                      onClick={(e) => { e.stopPropagation(); handleRemoveFromWishlist(item.id); }}
                       className="bg-red-100 text-red-700 py-2 px-3 rounded text-sm hover:bg-red-200 transition-colors flex items-center justify-center"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -237,6 +295,19 @@ export default function Wishlist() {
           </div>
         )}
       </div>
+
+      {/* Quick View Modal */}
+      {selectedProduct && (
+        <ProductQuickViewModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          product={selectedProduct}
+          isAdded={cartProductIds?.has(selectedProduct?.id)}
+          onAddToCart={(prodWithOptions) => {
+            handleAddToCart({ stopPropagation: () => { } }, selectedProduct, prodWithOptions)
+          }}
+        />
+      )}
     </div>
   )
 }

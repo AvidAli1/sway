@@ -18,6 +18,7 @@ export async function GET(request) {
     const minPrice = parseFloat(searchParams.get('minPrice'));
     const maxPrice = parseFloat(searchParams.get('maxPrice'));
     const brand = searchParams.get('brand');
+    const colorsParam = searchParams.get('colors');
     const search = searchParams.get('search');
     const sortBy = searchParams.get('sortBy') || 'createdAt'; // createdAt, price, name, popularity
     const sortOrder = searchParams.get('sortOrder') || 'desc'; // asc, desc
@@ -40,7 +41,12 @@ export async function GET(request) {
     }
 
     if (subCategory) {
-      query.subCategory = subCategory;
+      const subCategories = subCategory.split(',');
+      if (subCategories.length > 1) {
+        query.subCategory = { $in: subCategories };
+      } else {
+        query.subCategory = subCategory;
+      }
     }
 
     if (gender && gender !== 'all') {
@@ -56,7 +62,22 @@ export async function GET(request) {
     }
 
     if (brand) {
-      query.brand = brand;
+      const brandNames = brand.split(',');
+      // Find brand IDs for the given names
+      const distinctBrands = await Brand.find({ name: { $in: brandNames } }).select('_id');
+      const brandIds = distinctBrands.map(b => b._id);
+
+      if (brandIds.length > 0) {
+        query.brand = { $in: brandIds };
+      } else {
+        // If names provided but no IDs found, force empty result or ignore
+        // forcing empty result is safer to avoid showing everything
+        query.brand = null;
+      }
+    }
+
+    if (colorsParam) {
+      query.colors = { $in: colorsParam.split(',') };
     }
 
     if (featured) {
@@ -117,7 +138,13 @@ export async function GET(request) {
     const subCategories = category ?
       await Product.distinct('subCategory', { status: 'active', category }) :
       await Product.distinct('subCategory', { status: 'active' });
-    const brands = await Product.distinct('brand', { status: 'active' });
+    const distinctBrandIds = await Product.distinct('brand', { status: 'active' });
+    // Fetch actual Brand documents to get names
+    const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
+    const brands = brandDocs.map(b => b.name).sort();
+
+    // Get distinct colors
+    const colors = await Product.distinct('colors', { status: 'active' });
 
     // Get price range
     const priceRange = await Product.aggregate([
@@ -140,6 +167,7 @@ export async function GET(request) {
         categories,
         subCategories,
         brands,
+        colors,
         priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
       }
     });

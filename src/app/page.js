@@ -5,6 +5,7 @@ import { Search, ShoppingCart, Heart, Star, ArrowRight, Filter, X, Menu, User, L
 import Link from "next/link"
 import ProductModal from "./components/ProductModal"
 import ToastNotification from "./components/ToastNotification"
+import { useCart } from "./context/CartContext"
 
 // Custom hook for intersection observer
 const useInView = (threshold = 0.1, rootMargin = "0px") => {
@@ -34,6 +35,7 @@ const useInView = (threshold = 0.1, rootMargin = "0px") => {
 }
 
 export default function HomePage() {
+  const { cartCount, updateCartCount } = useCart()
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -154,6 +156,9 @@ export default function HomePage() {
 
       if (!res.ok || !data.success) {
         showToast(data.error || "Failed to add item to cart", "error")
+      } else {
+        updateCartCount()
+        showToast("Added to cart", "success")
       }
     } catch (error) {
       console.error("Error adding to cart:", error)
@@ -299,9 +304,11 @@ export default function HomePage() {
               {/* Cart */}
               <Link href="/cart" className="p-2 text-gray-600 hover:text-yellow-600 transition-colors relative">
                 <ShoppingCart className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                  0
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
 
               {/* Auth Buttons */}

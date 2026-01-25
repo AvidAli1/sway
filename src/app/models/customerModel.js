@@ -24,6 +24,10 @@ const customerSchema = new mongoose.Schema({
         country: String,
         isDefault: { type: Boolean, default: false },
     }],
+    wishlist: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product"
+    }],
     newsletterOptIn: {
         type: Boolean,
         default: false,

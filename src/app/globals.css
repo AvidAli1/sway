@@ -37,12 +37,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+  background: #CCCCCC;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #AAAAAA;
 }
 
 /* Swipe card animations */
@@ -111,21 +111,21 @@ body {
 /* RGB Border Animation */
 
 .pill-button {
-  position: relative; 
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 14px 80px;
-  border-radius: 9999px;        
-  background: #000000;         
-  color: #ffffff;              
+  border-radius: 9999px;
+  background: #000000;
+  color: #ffffff;
   font-weight: 600;
   font-size: 18px;
   border: none;
   cursor: pointer;
   text-decoration: none;
   transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   -webkit-tap-highlight-color: transparent;
   overflow: hidden;
   z-index: 1;
@@ -139,21 +139,19 @@ body {
   right: -2px;
   bottom: -2px;
   border-radius: 9999px;
-  background: linear-gradient(
-    45deg,
-    #ff0000,
-    #ff7f00,
-    #ffff00,
-    #00ff00,
-    #0000ff,
-    #4b0082,
-    #9400d3,
-    #ff0000
-  );
+  background: linear-gradient(45deg,
+      #ff0000,
+      #ff7f00,
+      #ffff00,
+      #00ff00,
+      #0000ff,
+      #4b0082,
+      #9400d3,
+      #ff0000);
   background-size: 400% 400%;
   opacity: 0;
   transition: opacity 0.4s ease;
-  z-index: -1; 
+  z-index: -1;
 }
 
 .pill-button::after {
@@ -170,7 +168,7 @@ body {
 
 .pill-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   opacity: 0.98;
 }
 
@@ -181,16 +179,24 @@ body {
 
 .pill-button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 .pill-button:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.28);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08), 0 6px 18px rgba(0, 0, 0, 0.28);
 }
 
 @keyframes rgb-border-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }

@@ -38,12 +38,12 @@ export default function CustomerDashboard() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef(null)
   const [stats, setStats] = useState({
-    totalOrders: 24,
-    pendingOrders: 2,
-    deliveredOrders: 20,
-    wishlistItems: 8,
-    reviewsWritten: 12,
-    loyaltyPoints: 450,
+    totalOrders: 0,
+    pendingOrders: 0,
+    deliveredOrders: 0,
+    wishlistItems: 0,
+    reviewsWritten: 0,
+    loyaltyPoints: 0,
   })
 
   // Mock user data - in real app, this would come from authentication
@@ -65,6 +65,21 @@ export default function CustomerDashboard() {
       router.push("/login")
     }
   }, [router])
+
+  // Fetch stats when user loads or tab changes
+  useEffect(() => {
+    if (user) {
+      const uId = user._id || user.id;
+      fetch(`/api/customer/dashboard?userId=${uId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setStats(data.stats)
+          }
+        })
+        .catch(err => console.error("Failed to fetch dashboard stats", err))
+    }
+  }, [user, activeTab])
 
   const handleLogout = () => {
     localStorage.removeItem("user")
@@ -117,13 +132,13 @@ export default function CustomerDashboard() {
       case "orders":
         return <OrderHistory />
       case "wishlist":
-        return <Wishlist />
+        return <Wishlist user={user} />
       case "addresses":
         return <AddressBook />
       case "payments":
         return <PaymentMethods />
       case "reviews":
-        return <MyReviews />
+        return <MyReviews user={user} />
       case "support":
         return <Support />
       default:
@@ -189,7 +204,7 @@ export default function CustomerDashboard() {
                   <span className="hidden md:block text-sm font-medium text-gray-900">{user.name}</span>
                   <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
-                
+
                 {/* Dropdown Menu */}
                 {isProfileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -295,9 +310,8 @@ export default function CustomerDashboard() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${
-                      activeTab === item.id ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-100"
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${activeTab === item.id ? "bg-yellow-400 text-black" : "text-gray-600 hover:bg-gray-100"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-5 h-5" />

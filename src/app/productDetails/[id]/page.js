@@ -25,9 +25,11 @@ import {
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import ToastNotification from "../../components/ToastNotification"
+import { useCart } from "../../context/CartContext"
 
 export default function ProductDetailPage() {
   const params = useParams()
+  const { cartCount, updateCartCount } = useCart()
   const productId = params.id
 
   const [product, setProduct] = useState(null)
@@ -38,7 +40,7 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState([]) // Store real reviews
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [cartItems, setCartItems] = useState([])
+
   const [selectedColor, setSelectedColor] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [quantity, setQuantity] = useState(1)
@@ -65,12 +67,7 @@ export default function ProductDetailPage() {
       console.warn("Failed to parse stored user", e)
     }
 
-    try {
-      const rawCart = typeof window !== "undefined" ? localStorage.getItem("cart") : null
-      if (rawCart) setCartItems(JSON.parse(rawCart))
-    } catch (e) {
-      console.warn("Failed to parse stored cart", e)
-    }
+
   }, [])
 
   // Close dropdown when clicking outside
@@ -97,14 +94,7 @@ export default function ProductDetailPage() {
     setIsProfileDropdownOpen(false)
   }
 
-  // Persist cart to localStorage
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") localStorage.setItem("cart", JSON.stringify(cartItems))
-    } catch (e) {
-      console.warn("Failed to persist cart", e)
-    }
-  }, [cartItems])
+
   // Fetch product from backend
   useEffect(() => {
     let mounted = true
@@ -141,6 +131,7 @@ export default function ProductDetailPage() {
           id: p._id, // Ensure id is available for API calls
           images,
           thumbnail: thumbnailUrl,
+          rating: p.ratings || 0,
         })
 
         setRelatedProducts((data.relatedProducts || []).map(p => ({
@@ -279,24 +270,8 @@ export default function ProductDetailPage() {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        // Update local cart items from API response
-        if (data.cart && data.cart.items) {
-          const transformed = data.cart.items.map((item) => ({
-            id: item.product?._id || item.product,
-            title: item.product?.name || "Product",
-            brand: typeof item.product?.brand === "string"
-              ? item.product.brand
-              : (item.product?.brand?.name || "Brand"),
-            price: item.price,
-            originalPrice: item.originalPrice || item.price,
-            image: item.product?.thumbnail?.SD || item.product?.images?.[0]?.SD || "/placeholder.svg",
-            quantity: item.quantity,
-            selectedSize: item.size,
-            selectedColor: item.color,
-            itemId: item._id,
-          }))
-          setCartItems(transformed)
-        }
+        updateCartCount()
+        showToast("Added to cart", "success")
       } else {
         showToast(data.error || "Failed to add item to cart", "error")
       }
@@ -367,9 +342,9 @@ export default function ProductDetailPage() {
                 className="relative p-2 text-gray-600 hover:text-black transition-colors"
               >
                 <ShoppingCart className="w-6 h-6" />
-                {cartItems.length > 0 && (
+                {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
+                    {cartCount}
                   </span>
                 )}
               </Link>
@@ -786,7 +761,7 @@ export default function ProductDetailPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-900">{review.userName || "Customer"}</h4>
+                            <h4 className="font-semibold text-gray-900">{review.user?.name || review.userName || "Customer"}</h4>
                             {review.isVerifiedPurchase && (
                               <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
                                 <Check className="w-3 h-3" />

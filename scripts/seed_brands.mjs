@@ -223,7 +223,7 @@ async function seed() {
                     stock: 50,
                     inStock: true,
                     sizes: ["S", "M", "L", "XL"],
-                    colors: ["Standard"],
+                    colors: ["Black", "White", "Red", "Blue", "Green", "Navy", "Grey", "Beige", "Maroon"].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1),
                     sku: `SKU-${brandData.name.substring(0, 3)}-${Date.now()}-${i}`,
                     images: imageUrls.map(url => ({ HD: url, SD: url })),
                     thumbnail: { HD: imageUrls[0], SD: imageUrls[0] },

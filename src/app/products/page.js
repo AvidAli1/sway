@@ -20,8 +20,10 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import ToastNotification from "../components/ToastNotification"
+import { useCart } from "../context/CartContext"
 
 export default function ProductsPage() {
+  const { cartCount, updateCartCount } = useCart()
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
@@ -34,17 +36,21 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState("newest")
   const [showFilters, setShowFilters] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
-  const [cartItems, setCartItems] = useState([])
+
   const [wishlist, setWishlist] = useState(new Set())
   const [currentPage, setCurrentPage] = useState(1)
   const [productsPerPage] = useState(12)
   const [categoriesList, setCategoriesList] = useState([])
+  const [subCategoriesList, setSubCategoriesList] = useState([])
+  const [brandsList, setBrandsList] = useState([])
+  const [colorsList, setColorsList] = useState([])
   const [hasMore, setHasMore] = useState(true)
   const observerTarget = useRef(null)
 
   const [filters, setFilters] = useState({
     brands: [],
     categories: [],
+    subCategories: [], // Added subCategories
     priceRange: [0, 15000],
     sizes: [],
     colors: [],
@@ -52,6 +58,32 @@ export default function ProductsPage() {
     inStock: false,
   })
 
+  // Auth & Wishlist Check
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const u = JSON.parse(userData)
+        const sessionUser = u.user || u
+        setUser(sessionUser)
+
+        // Fetch wishlist
+        const uId = sessionUser._id || sessionUser.id
+        if (uId) {
+          fetch(`/api/customer/wishlist?userId=${uId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.wishlist) {
+                setWishlist(new Set(data.wishlist.map(w => typeof w === 'object' ? w._id : w)))
+              }
+            })
+            .catch(err => console.error("Wishlist fetch error", err))
+        }
+      } catch (e) {
+        console.error("Auth parse error", e)
+      }
+    }
+  }, [])
   // Product data loaded from backend
   const [allProducts, setAllProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(true)
@@ -74,8 +106,9 @@ export default function ProductsPage() {
         p.append('page', String(page))
         p.append('limit', String(productsPerPage))
         if (searchQuery) p.append('search', searchQuery)
-        if (filters.categories && filters.categories.length > 0) p.append('category', filters.categories.join(','))
-        if (filters.brands && filters.brands.length > 0) p.append('brands', filters.brands.join(','))
+        // Use 'categories' filter state to filter by subCategory as per user request
+        if (filters.categories && filters.categories.length > 0) p.append('subCategory', filters.categories.join(','))
+        if (filters.brands && filters.brands.length > 0) p.append('brand', filters.brands.join(','))
         if (filters.sizes && filters.sizes.length > 0) p.append('sizes', filters.sizes.join(','))
         if (filters.colors && filters.colors.length > 0) p.append('colors', filters.colors.join(','))
         if (filters.priceRange) {
@@ -164,6 +197,12 @@ export default function ProductsPage() {
 
       // If API returns filters, seed UI filters only once
       if (data && data.filters && !hasSeededFiltersRef.current) {
+        // Populate full lists from API metadata
+        if (data.filters.categories) setCategoriesList(data.filters.categories)
+        if (data.filters.subCategories) setSubCategoriesList(data.filters.subCategories)
+        if (data.filters.brands) setBrandsList(data.filters.brands)
+        if (data.filters.colors) setColorsList(data.filters.colors)
+
         // Only update price range based on actual data bounds
         const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
 
@@ -232,8 +271,8 @@ export default function ProductsPage() {
       params.append('page', String(currentPage || 1))
       params.append('limit', String(productsPerPage || 12))
       if (searchQuery) params.append('search', searchQuery)
-      if (filters.categories && filters.categories.length > 0) params.append('category', filters.categories.join(','))
-      if (filters.brands && filters.brands.length > 0) params.append('brands', filters.brands.join(','))
+      if (filters.categories && filters.categories.length > 0) params.append('subCategory', filters.categories.join(','))
+      if (filters.brands && filters.brands.length > 0) params.append('brand', filters.brands.join(','))
       if (filters.sizes && filters.sizes.length > 0) params.append('sizes', filters.sizes.join(','))
       if (filters.colors && filters.colors.length > 0) params.append('colors', filters.colors.join(','))
       if (filters.priceRange) {
@@ -278,7 +317,7 @@ export default function ProductsPage() {
     }
   }, [currentPage, filters, sortBy, searchQuery, productsPerPage])
 
-  const [filteredProducts, setFilteredProducts] = useState(allProducts)
+
 
   // NOTE: In infinite scroll, we don't use client-side slicing. 
   // We just render 'allProducts' which accumulates pages.
@@ -357,24 +396,8 @@ export default function ProductsPage() {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        // Update local cart items from API response
-        if (data.cart && data.cart.items) {
-          const transformed = data.cart.items.map((item) => ({
-            id: item.product?._id || item.product,
-            title: item.product?.name || "Product",
-            brand: typeof item.product?.brand === "string"
-              ? item.product.brand
-              : (item.product?.brand?.name || "Brand"),
-            price: item.price,
-            originalPrice: item.originalPrice || item.price,
-            image: item.product?.thumbnail?.SD || item.product?.images?.[0]?.SD || "/placeholder.svg",
-            quantity: item.quantity,
-            selectedSize: item.size,
-            selectedColor: item.color,
-            itemId: item._id,
-          }))
-          setCartItems(transformed)
-        }
+        updateCartCount()
+        showToast("Added to cart", "success")
       } else {
         showToast(data.error || "Failed to add item to cart", "error")
       }
@@ -384,7 +407,14 @@ export default function ProductsPage() {
     }
   }
 
-  const toggleWishlist = (productId) => {
+  const toggleWishlist = async (productId) => {
+    if (!user) {
+      showToast("Please login", "error")
+      return
+    }
+
+    // Optimistic update
+    const previousWishlist = new Set(wishlist)
     setWishlist((prev) => {
       const newWishlist = new Set(prev)
       if (newWishlist.has(productId)) {
@@ -394,6 +424,26 @@ export default function ProductsPage() {
       }
       return newWishlist
     })
+
+    try {
+      const uId = user._id || user.id
+      const res = await fetch('/api/customer/wishlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uId, productId })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setWishlist(previousWishlist) // Revert on fail
+        showToast("Failed to update wishlist", "error")
+      } else {
+        // Optional: Toast success?
+        // showToast(data.action === 'added' ? "Added to wishlist" : "Removed from wishlist", "success")
+      }
+    } catch (e) {
+      setWishlist(previousWishlist)
+      showToast("Error updating wishlist", "error")
+    }
   }
 
   const clearFilters = () => {
@@ -511,9 +561,9 @@ export default function ProductsPage() {
             <div className="flex items-center space-x-4">
               <Link href="/cart" className="relative p-2 text-gray-600 hover:text-black transition-colors">
                 <ShoppingCart className="w-6 h-6" />
-                {cartItems.length > 0 && (
+                {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
+                    {cartCount}
                   </span>
                 )}
               </Link>
@@ -565,11 +615,11 @@ export default function ProductsPage() {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-3 sm:px-4 lg:px-6 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-4">
           {/* Desktop Filters Sidebar */}
-          <div className={`hidden lg:block w-64 ${showFilters ? "block" : "hidden lg:block"}`}>
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
+          <div className={`hidden lg:block w-80 ${showFilters ? "block" : "hidden lg:block"}`}>
+            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Filters</h2>
                 <button onClick={clearFilters} className="text-sm text-gray-600 hover:text-black transition-colors">
@@ -579,9 +629,9 @@ export default function ProductsPage() {
 
               <FilterContent
                 filters={filters}
-                brands={brands}
-                categories={categoriesList.length > 0 ? categoriesList : categories}
-                colors={colors}
+                brands={brandsList.length > 0 ? brandsList : brands}
+                categories={subCategoriesList}
+                colors={colorsList.length > 0 ? colorsList : colors}
                 onFilterChange={handleFilterChange}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
@@ -715,9 +765,9 @@ export default function ProductsPage() {
             <div className="p-4">
               <FilterContent
                 filters={filters}
-                brands={brands}
-                categories={categoriesList.length > 0 ? categoriesList : categories}
-                colors={colors}
+                brands={brandsList.length > 0 ? brandsList : brands}
+                categories={subCategoriesList}
+                colors={colorsList.length > 0 ? colorsList : colors}
                 onFilterChange={handleFilterChange}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
@@ -745,42 +795,89 @@ export default function ProductsPage() {
 }
 
 // Filter Content Component
+// Filter Content Component
+// Filter Content Component
 function FilterContent({ filters, brands, categories, colors, onFilterChange, sortBy, setSortBy }) {
+  const [brandSearch, setBrandSearch] = useState("")
+  const [categorySearch, setCategorySearch] = useState("")
+
+  const filteredBrands = brands
+    .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b))
+
+  const filteredCategories = categories
+    .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b))
+
   return (
     <div className="space-y-6">
       {/* Brands */}
       <div>
         <h3 className="font-semibold mb-3">Brands</h3>
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-          {brands.map((brand) => (
-            <label key={brand} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={filters.brands.includes(brand)}
-                onChange={() => onFilterChange("brands", brand)}
-                className="mr-3 rounded"
-              />
-              <span className="text-sm">{brand}</span>
-            </label>
-          ))}
+        <div className="mb-2 relative">
+          <input
+            type="text"
+            placeholder="Search brands..."
+            className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            value={brandSearch}
+            onChange={(e) => setBrandSearch(e.target.value)}
+          />
+          <Search className="absolute right-2 top-1.5 w-3 h-3 text-gray-400" />
+        </div>
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+          {filteredBrands.map((brand) => {
+            const isChecked = filters.brands.includes(brand)
+            return (
+              <label key={brand} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded group">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => onFilterChange("brands", brand)}
+                  className="sr-only"
+                />
+                <div className={`mr-3 w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isChecked ? "bg-yellow-400 border-yellow-400" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                  {isChecked && <Check className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                </div>
+                <span className={`text-sm truncate ${isChecked ? "font-medium text-black" : "text-gray-600"}`} title={brand}>{brand}</span>
+              </label>
+            )
+          })}
+          {filteredBrands.length === 0 && <p className="text-xs text-gray-500">No brands found</p>}
         </div>
       </div>
 
       {/* Categories */}
       <div>
         <h3 className="font-semibold mb-3">Categories</h3>
-        <div className="space-y-2">
-          {categories.map((category) => (
-            <label key={category} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={filters.categories.includes(category)}
-                onChange={() => onFilterChange("categories", category)}
-                className="mr-3 rounded"
-              />
-              <span className="text-sm capitalize">{category}</span>
-            </label>
-          ))}
+        <div className="mb-2 relative">
+          <input
+            type="text"
+            placeholder="Search categories..."
+            className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            value={categorySearch}
+            onChange={(e) => setCategorySearch(e.target.value)}
+          />
+          <Search className="absolute right-2 top-1.5 w-3 h-3 text-gray-400" />
+        </div>
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+          {filteredCategories.map((category) => {
+            const isChecked = filters.categories.includes(category)
+            return (
+              <label key={category} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded group">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => onFilterChange("categories", category)}
+                  className="sr-only"
+                />
+                <div className={`mr-3 w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isChecked ? "bg-yellow-400 border-yellow-400" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                  {isChecked && <Check className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                </div>
+                <span className={`text-sm capitalize truncate ${isChecked ? "font-medium text-black" : "text-gray-600"}`} title={category}>{category}</span>
+              </label>
+            )
+          })}
+          {filteredCategories.length === 0 && <p className="text-xs text-gray-500">No categories found</p>}
         </div>
       </div>
 
@@ -790,10 +887,11 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
         <input
           type="range"
           min="0"
-          max="15000"
+          max={15000}
+          // Ideally max should be dynamic but using fixed for now based on props
           value={filters.priceRange[1]}
           onChange={(e) => onFilterChange("priceRange", [0, Number.parseInt(e.target.value)])}
-          className="w-full"
+          className="w-full accent-yellow-400"
         />
         <div className="flex justify-between text-sm text-gray-600 mt-2">
           <span>PKR 0</span>
@@ -807,22 +905,34 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
       <div>
         <h3 className="font-semibold mb-3">Colors</h3>
         <div className="grid grid-cols-4 gap-2">
-          {colors.map((color) => (
-            <label
-              key={color}
-              className={`flex flex-col items-center gap-1 p-2 border rounded-lg cursor-pointer transition-colors ${filters.colors.includes(color) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
-                }`}
-            >
-              <input
-                type="checkbox"
-                checked={filters.colors.includes(color)}
-                onChange={() => onFilterChange("colors", color)}
-                className="sr-only"
-              />
-              <div className={`w-6 h-6 rounded-full border-2 ${getColorClass(color)}`} />
-              <span className="text-xs capitalize">{color}</span>
-            </label>
-          ))}
+          {(() => {
+            const visibleColors = colors;
+            if (visibleColors.length === 0) {
+              return <p className="text-xs text-gray-500 col-span-4 text-center py-2">No colors found</p>;
+            }
+            return visibleColors.map((color) => {
+              // Handle basic color mapping for display
+              let bgStyle = { backgroundColor: color }
+              if (color.toLowerCase() === 'multicolor') bgStyle = { background: 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)' }
+
+              return (
+                <label
+                  key={color}
+                  className={`flex flex-col items-center gap-1 p-2 border rounded-lg cursor-pointer transition-colors ${filters.colors.includes(color) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={filters.colors.includes(color)}
+                    onChange={() => onFilterChange("colors", color)}
+                    className="sr-only"
+                  />
+                  <div className="w-6 h-6 rounded-full border border-gray-300 shadow-sm" style={bgStyle} />
+                  <span className="text-xs capitalize truncate w-full text-center" title={color}>{color}</span>
+                </label>
+              )
+            })
+          })()}
         </div>
       </div>
 
@@ -853,18 +963,7 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
         </div>
       </div>
 
-      {/* In Stock */}
-      <div>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={filters.inStock}
-            onChange={() => onFilterChange("inStock", !filters.inStock)}
-            className="mr-3 rounded"
-          />
-          <span className="text-sm">In Stock Only</span>
-        </label>
-      </div>
+
     </div>
   )
 }

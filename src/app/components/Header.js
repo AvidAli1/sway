@@ -3,8 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Search, ShoppingCart, Heart, Grid, Layers } from "lucide-react"
+import { useCart } from "../context/CartContext"
 
-export default function Header({ user, onLoginClick, cartCount, onViewModeChange, viewMode }) {
+export default function Header({ user, onLoginClick, onViewModeChange, viewMode }) {
+  const { cartCount } = useCart()
   const [searchQuery, setSearchQuery] = useState("")
 
   return (

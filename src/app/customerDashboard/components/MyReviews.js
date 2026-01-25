@@ -1,47 +1,35 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Star, Edit, Trash2 } from "lucide-react"
 
-export default function MyReviews() {
-  const [reviews, setReviews] = useState([
-    {
-      id: 1,
-      productName: "Premium Cotton Hoodie",
-      productImage: "/products_page/premium_hoodie.jpg",
-      orderId: "SW2001",
-      rating: 5,
-      review:
-        "Absolutely love this hoodie! The fabric is so soft and comfortable. Perfect fit and the color is exactly as shown in the pictures. Will definitely order more from this brand!",
-      date: "2024-01-18T16:45:00Z",
-      helpful: 12,
-      brand: "Urban Style",
-    },
-    {
-      id: 2,
-      productName: "Designer Jeans",
-      productImage: "/landing_page_products/designer_jeans.jpg",
-      orderId: "SW2002",
-      rating: 4,
-      review:
-        "Good quality jeans with a nice fit. The material feels durable and the stitching is well done. Only minor issue is that they're a bit tight around the waist initially, but they stretch out after wearing.",
-      date: "2024-01-15T11:30:00Z",
-      helpful: 8,
-      brand: "Denim Co",
-    },
-    {
-      id: 3,
-      productName: "Graphic Print Hoodie",
-      productImage: "/products_page/graphic_print_hoodie.jpg",
-      orderId: "SW2004",
-      rating: 5,
-      review:
-        "Love this jacket! The vintage look is perfect and it goes with everything. Great quality denim and the fit is exactly what I wanted. Fast shipping too!",
-      date: "2024-01-10T18:30:00Z",
-      helpful: 20,
-      brand: "Retro Wear",
-    },
-  ])
+export default function MyReviews({ user }) {
+  const [reviews, setReviews] = useState([])
+
+  useEffect(() => {
+    if (user && (user._id || user.id)) {
+      const uId = user._id || user.id
+      fetch(`/api/customer/reviews?userId=${uId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.reviews) {
+            const mapped = data.reviews.map(r => ({
+              id: r._id,
+              productName: r.product?.name || "Product",
+              productImage: r.product?.thumbnail?.SD || r.product?.images?.[0]?.SD || "/placeholder.svg",
+              orderId: r.order ? r.order.toString().slice(-6).toUpperCase() : "N/A",
+              rating: r.rating,
+              review: r.comment,
+              date: r.createdAt,
+              helpful: r.likes || 0,
+              brand: "Brand"
+            }))
+            setReviews(mapped)
+          }
+        })
+        .catch(e => console.error("Reviews fetch error", e))
+    }
+  }, [user])
 
   const [editingReview, setEditingReview] = useState(null)
   const [editFormData, setEditFormData] = useState({
@@ -85,9 +73,8 @@ export default function MyReviews() {
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            className={`w-5 h-5 ${
-              i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-            } ${interactive ? "cursor-pointer hover:text-yellow-400" : ""}`}
+            className={`w-5 h-5 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+              } ${interactive ? "cursor-pointer hover:text-yellow-400" : ""}`}
             onClick={interactive && onChange ? () => onChange(i + 1) : undefined}
           />
         ))}
