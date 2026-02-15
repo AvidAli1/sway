@@ -12,6 +12,32 @@ export async function POST(request) {
 
     const { email, password } = await request.json();
 
+    // Check for hardcoded admin credentials
+    if (email === 'admin@sway.com' && password === 'admin123') {
+      const adminId = '000000000000000000000001';
+      const token = jwt.sign(
+        {
+          userId: adminId,
+          email: 'admin@sway.com',
+          role: 'admin'
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'Admin login successful',
+        token,
+        user: {
+          id: adminId,
+          name: 'Admin',
+          email: 'admin@sway.com',
+          role: 'admin'
+        }
+      });
+    }
+
     // Validate input
     if (!email || !password) {
       return NextResponse.json(
@@ -22,7 +48,7 @@ export async function POST(request) {
 
     // Find user by email
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -32,7 +58,7 @@ export async function POST(request) {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -54,7 +80,7 @@ export async function POST(request) {
 
     if (user.role === 'customer' && !isEmailVerified) {
       return NextResponse.json(
-        { 
+        {
           error: 'Please verify your email before logging in',
           emailNotVerified: true,
           email: user.email
@@ -65,7 +91,7 @@ export async function POST(request) {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
+      {
         userId: user._id,
         email: user.email,
         role: user.role

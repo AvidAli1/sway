@@ -81,6 +81,8 @@ export default function LoginPage() {
         const role = sessionUser?.role || data?.role || "customer"
         if (role === "brand") {
           router.push("/brandDashboard")
+        } else if (role === "admin") {
+          router.push("/admin/dashboard")
         } else {
           router.push("/customerDashboard")
         }
@@ -200,9 +202,8 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${
-                loading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
+              className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
             >
               {loading ? "Signing in....." : "Sign In"}
             </button>

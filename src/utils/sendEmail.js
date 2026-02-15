@@ -138,6 +138,15 @@ export const getOutForDeliveryTemplate = (order, customerName) => {
             </div>
             ` : ''}
 
+
+
+            ${order.delivery.estimatedDelivery ? `
+            <div style="margin-bottom: 10px;">
+              <span style="color: #666; display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Estimated Delivery</span>
+              <span style="font-weight: bold; font-size: 16px;">${new Date(order.delivery.estimatedDelivery).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+            ` : ''}
+
             <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #facc15;">
                <span style="color: #666; display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Address</span>
                <div style="font-weight: 500; margin-top: 5px;">
