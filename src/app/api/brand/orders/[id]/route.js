@@ -5,6 +5,7 @@ import Brand from '@/app/models/brandModel';
 import Product from '@/app/models/productModel';
 import { authMiddleware } from '@/utils/authMiddleware';
 import mongoose from 'mongoose';
+import { sendEmail, getOrderConfirmedTemplate, getOutForDeliveryTemplate } from '@/utils/sendEmail';
 
 // GET /api/brand/orders/[id] - Get single order details
 export async function GET(request, { params }) {
@@ -133,7 +134,7 @@ export async function PUT(request, { params }) {
     const { status, note, trackingNumber, courierService, estimatedDelivery } = body;
 
     // Find order
-    const order = await Order.findById(id).session(session);
+    const order = await Order.findById(id).session(session).populate('customer', 'name email');
 
     if (!order) {
       await session.abortTransaction();
@@ -201,7 +202,7 @@ export async function PUT(request, { params }) {
       order.payment.status = 'refunded';
       order.payment.refundedAt = new Date();
       order.payment.refundAmount = order.total;
-      
+
       // Restore stock
       for (const item of order.items) {
         const product = await Product.findById(item.product).session(session);
@@ -220,6 +221,28 @@ export async function PUT(request, { params }) {
 
     await order.save({ session });
     await session.commitTransaction();
+
+    // Send emails after successful transaction commit
+    try {
+      if (status === 'confirmed' && order.customer?.email) {
+        await sendEmail({
+          to: order.customer.email,
+          subject: `Order Confirmed: ${order.orderNumber}`,
+          html: getOrderConfirmedTemplate(order, order.customer.name || 'Customer'),
+        });
+      }
+
+      if (status === 'out_for_delivery' && order.customer?.email) {
+        await sendEmail({
+          to: order.customer.email,
+          subject: `Out for Delivery: ${order.orderNumber}`,
+          html: getOutForDeliveryTemplate(order, order.customer.name || 'Customer'),
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send order status email:', emailError);
+      // Don't fail the request if email sending fails, just log it
+    }
 
     return NextResponse.json({
       success: true,
