@@ -27,6 +27,7 @@ export default function BrandProductUpload() {
         careInstructions: "",
         status: 'active',
         sizeChart: null,
+        virtualTryOnImage: null,
         thumbnail: null,     // will hold the first uploaded image by default
         isFeatured: false,   // admin-controlled, always false for brand uploads
         inStock: true,       // true by default per your requirement
@@ -160,7 +161,7 @@ export default function BrandProductUpload() {
             fd.append('stock', String(Number(formData.stock) || 0))
             fd.append('inStock', String(Boolean(formData.inStock)))
             // brands cannot mark featured — always send false by default
-            fd.append('isFeatured', String(Boolean(formData.isFeatured))) 
+            fd.append('isFeatured', String(Boolean(formData.isFeatured)))
             fd.append('subCategory', formData.subCategory || '')
             fd.append('gender', formData.gender || 'unisex')
             fd.append('material', formData.material || '')
@@ -191,6 +192,11 @@ export default function BrandProductUpload() {
             // optional sizeChart file
             if (formData.sizeChart) {
                 fd.append('sizeChart', formData.sizeChart, formData.sizeChart.name || 'size-chart.jpg')
+            }
+
+            // optional virtualTryOnImage file
+            if (formData.virtualTryOnImage) {
+                fd.append('virtualTryOnImage', formData.virtualTryOnImage, formData.virtualTryOnImage.name || 'virtual-try-on.jpg')
             }
 
             // Specifications, tags and features as JSON strings
@@ -267,7 +273,7 @@ export default function BrandProductUpload() {
                     </div>
                 </div>
 
-                
+
             </div>
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -478,6 +484,7 @@ export default function BrandProductUpload() {
                                 </div>
                             </div>
                         </div>
+
                         {/* Product Images */}
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -545,6 +552,53 @@ export default function BrandProductUpload() {
                             )}
                         </div>
 
+                        {/* Virtual Try-On Image Upload */}
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <h2 className="text-lg font-semibold mb-4">Virtual Try-on Image (Optional)</h2>
+
+                            <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm font-medium border border-blue-100">
+                                If you want virtual try-on for your product, you must upload an image here.
+                            </div>
+
+                            <p className="text-gray-600 mb-4 text-sm">
+                                • Upload a clean product image for virtual try-on features.
+                                <br />• Recommended for upper body wear (shirts, tops, dresses) and lower body wear (jeans, pants).
+                                <br />• Ensure consistent background and lighting for best results.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 mb-2">Example Pant:</p>
+                                    <img src="/virtual_tryon/pant_example.png" alt="Pant Example" className="w-full h-48 object-contain bg-gray-50 rounded border" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 mb-2">Example Shirt:</p>
+                                    <img src="/virtual_tryon/shirt_example.png" alt="Shirt Example" className="w-full h-48 object-contain bg-gray-50 rounded border" />
+                                </div>
+                            </div>
+
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleInputChange("virtualTryOnImage", e.target.files[0])}
+                                    className="hidden"
+                                    id="virtual-try-on-upload"
+                                />
+                                <label htmlFor="virtual-try-on-upload" className="cursor-pointer block">
+                                    <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                    <p className="text-gray-600 font-medium">Click to upload Virtual Try-on Image</p>
+                                    <p className="text-gray-400 text-xs mt-1">JPG, PNG, WebP</p>
+                                    {formData.virtualTryOnImage && (
+                                        <div className="mt-3 inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                            {formData.virtualTryOnImage.name}
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+                        </div>
+
                         {/* Variants */}
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -564,8 +618,8 @@ export default function BrandProductUpload() {
                                             <label
                                                 key={size}
                                                 className={`flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.sizes.includes(size)
-                                                        ? "border-yellow-400 bg-yellow-50 text-yellow-700"
-                                                        : "border-gray-200 hover:border-gray-300"
+                                                    ? "border-yellow-400 bg-yellow-50 text-yellow-700"
+                                                    : "border-gray-200 hover:border-gray-300"
                                                     }`}
                                             >
                                                 <input
@@ -591,8 +645,8 @@ export default function BrandProductUpload() {
                                             <label
                                                 key={color.value}
                                                 className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.colors.includes(color.value)
-                                                        ? "border-yellow-400 bg-yellow-50"
-                                                        : "border-gray-200 hover:border-gray-300"
+                                                    ? "border-yellow-400 bg-yellow-50"
+                                                    : "border-gray-200 hover:border-gray-300"
                                                     }`}
                                             >
                                                 <input
@@ -603,20 +657,20 @@ export default function BrandProductUpload() {
                                                 />
                                                 <div
                                                     className={`w-6 h-6 rounded-full border-2 border-gray-300 ${color.value === "black"
-                                                            ? "bg-black"
-                                                            : color.value === "white"
-                                                                ? "bg-white"
-                                                                : color.value === "grey"
-                                                                    ? "bg-gray-500"
-                                                                    : color.value === "navy"
-                                                                        ? "bg-blue-900"
-                                                                        : color.value === "red"
-                                                                            ? "bg-red-500"
-                                                                            : color.value === "blue"
-                                                                                ? "bg-blue-500"
-                                                                                : color.value === "green"
-                                                                                    ? "bg-green-500"
-                                                                                    : "bg-yellow-500"
+                                                        ? "bg-black"
+                                                        : color.value === "white"
+                                                            ? "bg-white"
+                                                            : color.value === "grey"
+                                                                ? "bg-gray-500"
+                                                                : color.value === "navy"
+                                                                    ? "bg-blue-900"
+                                                                    : color.value === "red"
+                                                                        ? "bg-red-500"
+                                                                        : color.value === "blue"
+                                                                            ? "bg-blue-500"
+                                                                            : color.value === "green"
+                                                                                ? "bg-green-500"
+                                                                                : "bg-yellow-500"
                                                         }`}
                                                 />
                                                 <span>{color.name}</span>
@@ -755,20 +809,20 @@ function ProductPreview({ formData }) {
                                     <div
                                         key={color}
                                         className={`w-8 h-8 rounded-full border-2 border-gray-300 ${color === "black"
-                                                ? "bg-black"
-                                                : color === "white"
-                                                    ? "bg-white"
-                                                    : color === "grey"
-                                                        ? "bg-gray-500"
-                                                        : color === "navy"
-                                                            ? "bg-blue-900"
-                                                            : color === "red"
-                                                                ? "bg-red-500"
-                                                                : color === "blue"
-                                                                    ? "bg-blue-500"
-                                                                    : color === "green"
-                                                                        ? "bg-green-500"
-                                                                        : "bg-yellow-500"
+                                            ? "bg-black"
+                                            : color === "white"
+                                                ? "bg-white"
+                                                : color === "grey"
+                                                    ? "bg-gray-500"
+                                                    : color === "navy"
+                                                        ? "bg-blue-900"
+                                                        : color === "red"
+                                                            ? "bg-red-500"
+                                                            : color === "blue"
+                                                                ? "bg-blue-500"
+                                                                : color === "green"
+                                                                    ? "bg-green-500"
+                                                                    : "bg-yellow-500"
                                             }`}
                                     />
                                 ))}

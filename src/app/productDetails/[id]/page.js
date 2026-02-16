@@ -603,11 +603,13 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Virtual Try-on Button */}
-              <div className="flex justify-center pt-2">
-                <button onClick={handleVirtualTryOn} className="pill-button">
-                  <span className="label">Virtual Try-on</span>
-                </button>
-              </div>
+              {product.virtualTryOnImage && (
+                <div className="flex justify-center pt-2">
+                  <button onClick={handleVirtualTryOn} className="pill-button">
+                    <span className="label">Virtual Try-on</span>
+                  </button>
+                </div>
+              )}
 
               {!product.inStock && <p className="text-red-600 text-center font-medium">Out of Stock</p>}
             </div>

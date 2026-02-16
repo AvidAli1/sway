@@ -1,134 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Upload, Camera, Sparkles, Loader2, CheckCircle, Download, Share2, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 
 export default function VirtualTryOnPage() {
     const params = useParams()
-    const productId = Number.parseInt(params.id)
+    const productId = params.id
+
+    const [product, setProduct] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
     const [selectedImage, setSelectedImage] = useState(null)
     const [imagePreview, setImagePreview] = useState(null)
+    const [generatedImage, setGeneratedImage] = useState(null) // New state for result
     const [isGenerating, setIsGenerating] = useState(false)
     const [generationStep, setGenerationStep] = useState(0)
     const [showResult, setShowResult] = useState(false)
     const [progress, setProgress] = useState(0)
 
-    // All products data (same as in your product detail page)
-    const allProducts = [
-        {
-            id: 1,
-            title: "Premium Cotton Hoodie",
-            brand: "Urban Style",
-            price: 4500,
-            originalPrice: 5500,
-            images: [
-                "/products_page/premium_hoodie.jpg",
-                "/products_page/premium_hoodie_2.jpg",
-                "/products_page/premium_hoodie_3.jpg",
-                "/products_page/premium_hoodie_4.jpg",
-            ],
-            category: "tops",
-            sizes: ["S", "M", "L", "XL"],
-            colors: ["yellow", "black", "white"],
-            rating: 4.8,
-            reviews: 124,
-        },
-        {
-            id: 2,
-            title: "Vintage Denim Jacket",
-            brand: "Street Wear",
-            price: 6200,
-            images: [
-                "/products_page/vintage_denim_jacket.jpg",
-                "/products_page/vintage_denim_jacket_2.jpg",
-                "/products_page/vintage_denim_jacket_3.jpg",
-            ],
-            category: "jackets",
-            sizes: ["M", "L", "XL"],
-            colors: ["blue", "black"],
-            rating: 4.6,
-            reviews: 89,
-        },
-        {
-            id: 3,
-            title: "Casual White Sneakers",
-            brand: "Comfort Walk",
-            price: 3800,
-            images: [
-                "/products_page/casual_white_sneakers.jpg",
-                "/products_page/casual_white_sneakers_2.jpg",
-                "/products_page/casual_white_sneakers_3.jpg",
-            ],
-            category: "shoes",
-            sizes: ["7", "8", "9", "10", "11"],
-            colors: ["white", "grey"],
-            rating: 4.7,
-            reviews: 156,
-        },
-        {
-            id: 4,
-            title: "Oversized T-Shirt",
-            brand: "Retro Vibes",
-            price: 2200,
-            images: ["/products_page/oversized_tshirt.jpg"],
-            category: "tops",
-            sizes: ["S", "M", "L", "XL", "XXL"],
-            colors: ["black", "white", "grey", "yellow"],
-            rating: 4.5,
-            reviews: 203,
-        },
-        {
-            id: 5,
-            title: "Slim Fit Jeans",
-            brand: "Elite Fashion",
-            price: 5800,
-            images: [
-                "/products_page/slim_fit_jeans.jpg",
-                "/products_page/slim_fit_jeans_2.jpg",
-                "/products_page/slim_fit_jeans_3.jpg",
-            ],
-            category: "bottoms",
-            sizes: ["28", "30", "32", "34", "36"],
-            colors: ["blue", "black"],
-            rating: 4.9,
-            reviews: 78,
-        },
-        {
-            id: 6,
-            title: "Summer Floral Dress",
-            brand: "Chic Styles",
-            price: 4200,
-            images: [
-                "/products_page/summer_floral_dress.jpg",
-                "/products_page/summer_floral_dress_2.jpg",
-            ],
-            category: "dresses",
-            sizes: ["XS", "S", "M", "L"],
-            colors: ["yellow", "white", "pink"],
-            rating: 4.4,
-            reviews: 92,
-        },
-        {
-            id: 9,
-            title: "Floral Button-Up Shirt",
-            brand: "Tropical Wear",
-            price: 3500,
-            images: [
-                "/virtual_tryon/buttonup_shirt.jpg",
-            ],
-            category: "tops",
-            sizes: ["S", "M", "L", "XL"],
-            colors: ["white", "multicolor"],
-            rating: 4.6,
-            reviews: 54,
-        },
-    ];
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const res = await fetch(`/api/customer/products/${productId}`)
+                const data = await res.json()
+                if (data.success) {
+                    // Normalize images
+                    const p = data.product
+                    const images = (p.images || []).map((img) => img.SD || img.HD || img)
+                    setProduct({
+                        ...p,
+                        id: p._id,
+                        images,
+                        price: p.price || 0,
+                        title: p.name || "Product",
+                        brand: p.brand?.name || p.brand || "Brand"
+                    })
+                } else {
+                    setError("Product not found")
+                }
+            } catch (err) {
+                console.error("Error fetching product:", err)
+                setError("Failed to load product")
+            } finally {
+                setLoading(false)
+            }
+        }
 
-    // Find the current product
-    const product = allProducts.find((p) => p.id === productId)
+        if (productId) {
+            fetchProduct()
+        }
+    }, [productId])
 
     // Fun loading messages for different steps
     const loadingSteps = [
@@ -177,27 +101,106 @@ export default function VirtualTryOnPage() {
         setGenerationStep(0)
         setProgress(0)
         setShowResult(false)
+        setGeneratedImage(null)
 
-        // Simulate the generation process with fun messages
-        for (let i = 0; i < loadingSteps.length; i++) {
-            setGenerationStep(i)
-            setProgress(((i + 1) / loadingSteps.length) * 100)
+        try {
+            // 1. Prepare Garment Image URL
+            const vtonImageObj = product.virtualTryOnImage || {}
+            // Prefer HD, fallback to SD, fallback to main image if absolutely necessary (though VTON image is preferred)
+            const garmentUrl = vtonImageObj.HD || vtonImageObj.SD || (typeof vtonImageObj === 'string' ? vtonImageObj : null)
 
-            await new Promise((resolve) => setTimeout(resolve, loadingSteps[i].duration))
+            if (!garmentUrl) {
+                alert("Virtual Try-On Image not found for this product. Please choose a supported product.")
+                setIsGenerating(false)
+                return
+            }
+
+            // 2. Fetch Garment Blob
+            // Note: If CORS blocks S3, we might need a proxy. Assuming standard public access works.
+            const garmentRes = await fetch(garmentUrl)
+            const garmentBlob = await garmentRes.blob()
+
+            // 3. Map Apparel Type
+            let apparelType = 'shirt' // default
+            const cat = (product.category || '').toLowerCase()
+            const subCat = (product.subCategory || '').toLowerCase()
+
+            if (cat === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('trouser') || cat.includes('skirt')) {
+                apparelType = 'pants' // Common mapping for lower body? User API example might need 'lower_body'? 
+                // User said: "apparel_type which is like shirt or so on". Postman shows "shirt".
+                // I will assume 'shirt', 'pants', 'dress' are the keys based on common VTON.
+            } else if (cat === 'dresses' || cat.includes('dress') || cat.includes('gown')) {
+                apparelType = 'dress'
+            } else if (cat === 'tops' || cat.includes('shirt') || cat === 'outerwear') {
+                apparelType = 'shirt' // 'upper_body' usually
+            }
+
+            // 4. Prepare FormData
+            const fd = new FormData()
+            fd.append('human_image', selectedImage)
+            fd.append('garment_image', garmentBlob, 'garment.jpg')
+            fd.append('apparel_type', apparelType)
+
+            // 5. Start Animation Loop (run in parallel)
+            const animationLoop = async () => {
+                for (let i = 0; i < loadingSteps.length; i++) {
+                    if (!isGenerating) break // Stop if aborted/finished (though state updates async)
+                    setGenerationStep(i)
+                    setProgress(((i + 1) / loadingSteps.length) * 100)
+                    // Last step is "Polishing...", we hold there if API is still running
+                    if (i === loadingSteps.length - 1) {
+                        // Just wait
+                        await new Promise(r => setTimeout(r, 60000)) // Wait up to 60s at last step
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, loadingSteps[i].duration))
+                    }
+                }
+            }
+
+            // We start animation but don't await it to block fetch
+            // But we can race logic or just let it update state.
+            // React state updates will reflect in UI.
+            const animationPromise = animationLoop()
+
+            // 6. Call API
+            const response = await fetch('https://nonincorporated-unchristian-leisa.ngrok-free.dev/generate-vton', {
+                method: 'POST',
+                body: fd,
+            })
+
+            const data = await response.json()
+
+            if (data.status === 'success' && data.result_url) {
+                setGeneratedImage(data.result_url)
+                setShowResult(true)
+            } else {
+                throw new Error(data.message || "Failed to generate image")
+            }
+
+        } catch (err) {
+            console.error(err)
+            alert("Failed to generate V-TON result: " + (err.message || "Unknown error"))
+        } finally {
+            setIsGenerating(false)
         }
-
-        // Show final result
-        setIsGenerating(false)
-        setShowResult(true)
     }
 
     const resetTryOn = () => {
         setSelectedImage(null)
         setImagePreview(null)
+        setGeneratedImage(null)
         setIsGenerating(false)
         setGenerationStep(0)
         setShowResult(false)
         setProgress(0)
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            </div>
+        )
     }
 
     if (!product) {
@@ -336,7 +339,7 @@ export default function VirtualTryOnPage() {
                                     </div>
                                 </div>
                             )}
-                    
+
                             {isGenerating && (
                                 <div className="h-80 bg-gradient-to-br from-purple-50 to-yellow-50 rounded-xl flex flex-col items-center justify-center p-8">
                                     <div className="text-center w-full max-w-md">
@@ -406,7 +409,7 @@ export default function VirtualTryOnPage() {
                                 <h4 className="text-lg font-semibold text-gray-700 mb-4">With {product.title}</h4>
                                 <div className="relative">
                                     <img
-                                        src={"/virtual_tryon/generated_pic.jpg" || "/placeholder.svg"}
+                                        src={generatedImage || "/placeholder.svg"}
                                         alt="Virtual Try-On Result"
                                         className="w-full h-80 object-contain rounded-xl shadow-lg"
                                     />

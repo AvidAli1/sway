@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/utils/dbConnect';
 import Product from '@/app/models/productModel';
@@ -8,15 +9,26 @@ export async function GET(request, { params }) {
   try {
     await connectToDatabase();
 
-  // `params` can be a promise-like in Next.js route handlers — await it before use
-  const { id } = await params;
+    // `params` can be a promise-like in Next.js route handlers — await it before use
+    const { id } = await params;
 
     // Find the product (only active and in stock)
-    const product = await Product.findOne({ 
-      _id: id, 
-      status: 'active',
-      inStock: true 
-    }).populate('brand', 'name businessEmail logo description address');
+    let product;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      product = await Product.findOne({
+        _id: id,
+        status: 'active',
+        inStock: true
+      }).populate('brand', 'name businessEmail logo description address');
+    } else {
+      // Try searching by slug if ID is not a valid ObjectId
+      product = await Product.findOne({
+        slug: id,
+        status: 'active',
+        inStock: true
+      }).populate('brand', 'name businessEmail logo description address');
+    }
 
     if (!product) {
       return NextResponse.json(
@@ -32,10 +44,10 @@ export async function GET(request, { params }) {
       status: 'active',
       inStock: true
     })
-    .populate('brand', 'name businessEmail logo')
-    .limit(8)
-    .select('name price originalPrice discount thumbnail images ratings numReviews slug')
-    .lean();
+      .populate('brand', 'name businessEmail logo')
+      .limit(8)
+      .select('name price originalPrice discount thumbnail images ratings numReviews slug')
+      .lean();
 
     // Get similar products (same brand, different product)
     const similarProducts = await Product.find({
@@ -44,10 +56,10 @@ export async function GET(request, { params }) {
       status: 'active',
       inStock: true
     })
-    .populate('brand', 'name businessEmail logo')
-    .limit(6)
-    .select('name price originalPrice discount thumbnail images ratings numReviews slug')
-    .lean();
+      .populate('brand', 'name businessEmail logo')
+      .limit(6)
+      .select('name price originalPrice discount thumbnail images ratings numReviews slug')
+      .lean();
 
     return NextResponse.json({
       success: true,

@@ -115,6 +115,16 @@ const productSchema = new mongoose.Schema({
             trim: true,
         }
     },
+    virtualTryOnImage: {
+        HD: {
+            type: String,
+            trim: true,
+        },
+        SD: {
+            type: String,
+            trim: true,
+        }
+    },
     gender: {
         type: String,
         enum: ["men", "women", "unisex", "kids"],

@@ -48,15 +48,15 @@ export async function GET(request) {
 
     // Build query
     const query = { brand: brand._id };
-    
+
     if (status !== 'all') {
       query.status = status;
     }
-    
+
     if (category) {
       query.category = category;
     }
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -112,7 +112,7 @@ export async function POST(request) {
     console.log('Authenticating request...');
     const authResult = await authMiddleware(request);
     console.log('Auth result:', authResult);
-    
+
     if (authResult.error) {
       console.log('Authentication failed:', authResult.error);
       return NextResponse.json(
@@ -137,7 +137,7 @@ export async function POST(request) {
     console.log('Looking for brand with owner:', user.id);
     const brand = await Brand.findOne({ owner: user.id });
     console.log('Brand found:', brand ? brand.name : 'No brand found');
-    
+
     if (!brand) {
       console.log('Brand not found for user:', user.id);
       return NextResponse.json(
@@ -153,13 +153,13 @@ export async function POST(request) {
     for (let [key, value] of formData.entries()) {
       console.log(`${key}: ${value}`);
     }
-    
+
     // Extract product data
     const originalPrice = parseFloat(formData.get('originalPrice')) || 0;
     const discountPercentage = parseFloat(formData.get('discount')) || 0;
-    
+
     // Calculate price based on original price and discount
-    const calculatedPrice = originalPrice > 0 && discountPercentage > 0 
+    const calculatedPrice = originalPrice > 0 && discountPercentage > 0
       ? originalPrice - (originalPrice * discountPercentage / 100)
       : originalPrice;
 
@@ -194,7 +194,7 @@ export async function POST(request) {
     console.log('Product data:', productData);
     console.log('Original price:', originalPrice);
     console.log('Calculated price:', calculatedPrice);
-    
+
     // Validate required fields
     if (!productData.name || !productData.category || !originalPrice) {
       console.log('Validation failed:', {
@@ -243,6 +243,25 @@ export async function POST(request) {
       }
     }
 
+    // Process virtualTryOnImage
+    const virtualTryOnFiles = formData.getAll('virtualTryOnImage');
+    if (virtualTryOnFiles && virtualTryOnFiles.length > 0 && virtualTryOnFiles[0].size > 0) {
+      const vtoFile = virtualTryOnFiles[0];
+      try {
+        const vtoBuffer = await vtoFile.arrayBuffer();
+        const vtoResult = await uploadProductImages(
+          Buffer.from(vtoBuffer),
+          vtoFile.name,
+          vtoFile.type
+        );
+        productData.virtualTryOnImage = vtoResult;
+      } catch (err) {
+        console.error('Virtual Try-On upload failed, skipping:', vtoFile.name, err);
+        failedImages.push(vtoFile.name || 'virtualTryOnImage');
+        productData.virtualTryOnImage = null;
+      }
+    }
+
     // Process product images
     if (imageFiles && imageFiles.length > 0) {
       for (const imageFile of imageFiles) {
@@ -277,7 +296,7 @@ export async function POST(request) {
       specifications,
       images
     });
-    
+
     const product = new Product({
       ...productData,
       slug,
@@ -316,7 +335,7 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creating product:', error);
-    
+
     // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
