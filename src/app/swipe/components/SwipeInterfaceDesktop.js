@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, ShoppingBag, Star } from "lucide-react"
 
-export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBucket, user, showToast }) {
+export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBucket, user, showToast, onReachEnd }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -63,6 +63,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
             setDragOffset({ x: 0, y: 0 })
             return
         }
+        swipeCountRef.current += 1;
         setIsAnimating(true)
         setDragOffset({ x: 0, y: -1000 })
         onAddToCart(currentProduct)
@@ -70,6 +71,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
     }
 
     const handleSwipeRight = () => {
+        swipeCountRef.current += 1;
         setIsAnimating(true)
         setDragOffset({ x: 1000, y: 0 })
         onAddToBucket(currentProduct)
@@ -77,12 +79,42 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
     }
 
     const handleSwipeLeft = () => {
+        swipeCountRef.current += 1;
         setIsAnimating(true)
         setDragOffset({ x: -1000, y: 0 })
         setTimeout(() => nextProduct(), 300)
     }
 
+    // Swipe tracking for Loyalty Points
+    const swipeCountRef = useRef(0);
+
+    // Send swipe count on unmount
+    useEffect(() => {
+        return () => {
+            const count = swipeCountRef.current;
+            if (count > 0 && user) {
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    fetch('/api/loyalty/swipes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ count }),
+                        keepalive: true
+                    });
+                }
+            }
+        };
+    }, [user]);
+
     const nextProduct = () => {
+
+        if (onReachEnd && products.length - currentIndex < 3) {
+            onReachEnd();
+        }
+
         if (currentIndex < products.length - 1) {
             setCurrentIndex(currentIndex + 1)
         } else {
@@ -132,8 +164,8 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
         <div className="relative h-full w-full flex flex-col">
             {/* Top Indicators */}
             <div className="flex justify-center gap-6 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10 shrink-0">
-                <span className="flex items-center gap-1">Cart <ArrowRight className="w-3 h-3" /></span>
-                <span className="flex items-center gap-1"><ArrowUp className="w-3 h-3" /> Bucket</span>
+                <span className="flex items-center gap-1">Bucket <ArrowRight className="w-3 h-3" /></span>
+                <span className="flex items-center gap-1"><ArrowUp className="w-3 h-3" /> Cart</span>
                 <span className="flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Pass</span>
             </div>
 
@@ -189,7 +221,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
                             </div>
                         </div>
 
-                        <p className="text-gray-600 text-sm mb-3">{currentProduct.brand}</p>
+                        <p className="text-gray-600 text-sm mb-3">{currentProduct.brand?.name || currentProduct.brand}</p>
 
                         {/* Rating */}
                         <div className="flex items-center gap-2 mb-4">

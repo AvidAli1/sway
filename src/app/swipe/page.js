@@ -1,20 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ArrowLeft, ShoppingCart, Container, X, Filter } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { ArrowLeft, ShoppingCart, Container, X, Filter, User, ChevronDown, LayoutDashboard, LogOut } from "lucide-react"
 import Link from "next/link"
 import SwipeInterface from "./components/SwipeInterface"
 import SwipeBucketModal from "./components/SwipeBucketModal"
 import ToastNotification from "../components/ToastNotification"
+import { useRouter } from "next/navigation"
+import { useCart } from "../context/CartContext"
 
 export default function SwipePage() {
+  const router = useRouter()
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
   const [toastMessage, setToastMessage] = useState("")
   const [toastVisible, setToastVisible] = useState(false)
   const [toastType, setToastType] = useState("info")
   const [cartItems, setCartItems] = useState([])
-  const [cartCount, setCartCount] = useState(0)
+  const { cartCount, updateCartCount } = useCart()
   const [bucketItems, setBucketItems] = useState([])
   const [showBucketModal, setShowBucketModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
@@ -26,135 +31,132 @@ export default function SwipePage() {
     colors: [],
   })
 
-  const [allProducts] = useState([
-    {
-      id: 1,
-      title: "Premium Cotton Hoodie",
-      brand: "Urban Style",
-      price: 4500,
-      originalPrice: 5500,
-      image: "/landing_page_products/premium_hoodie.jpg",
-      category: "tops",
-      sizes: ["S", "M", "L", "XL"],
-      colors: ["yellow", "black", "white"],
-      rating: 4.8,
-      description: "Comfortable premium cotton hoodie perfect for casual wear",
-    },
-    {
-      id: 2,
-      title: "Vintage Denim Jacket",
-      brand: "Street Wear",
-      price: 6200,
-      image: "/products_page/vintage_denim_jacket.jpg",
-      category: "jackets",
-      sizes: ["M", "L", "XL"],
-      colors: ["blue", "black"],
-      rating: 4.6,
-      description: "Classic vintage-style denim jacket with modern fit",
-    },
-    {
-      id: 3,
-      title: "Casual White Sneakers",
-      brand: "Comfort Walk",
-      price: 3800,
-      image: "/products_page/casual_white_sneakers.jpg",
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11"],
-      colors: ["white", "grey"],
-      rating: 4.7,
-      description: "Comfortable everyday sneakers with premium cushioning",
-    },
-    {
-      id: 4,
-      title: "Oversized T-Shirt",
-      brand: "Retro Vibes",
-      price: 2200,
-      image: "/products_page/oversized_tshirt2.jpg",
-      category: "tops",
-      sizes: ["S", "M", "L", "XL", "XXL"],
-      colors: ["black", "white", "grey", "yellow"],
-      rating: 4.5,
-      description: "Trendy oversized t-shirt with soft cotton blend",
-    },
-    {
-      id: 5,
-      title: "Slim Fit Jeans",
-      brand: "Elite Fashion",
-      price: 5800,
-      image: "/products_page/slim_fit_jeans.jpg",
-      category: "bottoms",
-      sizes: ["28", "30", "32", "34", "36"],
-      colors: ["blue", "black"],
-      rating: 4.9,
-      description: "Premium slim fit jeans with stretch comfort",
-    },
-    {
-      id: 6,
-      title: "Summer Floral Dress",
-      brand: "Chic Styles",
-      price: 4200,
-      image: "/products_page/summer_floral_dress.jpg",
-      category: "dresses",
-      sizes: ["XS", "S", "M", "L"],
-      colors: ["yellow", "white", "pink"],
-      rating: 4.4,
-      description: "Beautiful floral print dress perfect for summer",
-    },
-    {
-      id: 7,
-      title: "Leather Crossbody Bag",
-      brand: "Luxury Goods",
-      price: 7500,
-      image: "/products_page/leather_crossbody_bag2.jpg",
-      category: "accessories",
-      sizes: ["One Size"],
-      colors: ["brown", "black"],
-      rating: 4.8,
-      description: "Premium leather crossbody bag with multiple compartments",
-    },
-    {
-      id: 8,
-      title: "Athletic Running Shoes",
-      brand: "Sport Pro",
-      price: 4900,
-      image: "/products_page/athletic_running_shoes.jpg",
-      category: "shoes",
-      sizes: ["7", "8", "9", "10", "11", "12"],
-      colors: ["black", "white", "grey"],
-      rating: 4.6,
-      description: "High-performance running shoes with advanced cushioning",
-    },
-  ])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [userId, setUserId] = useState(null) // Track userId for passing to API if needed
 
-  const [filteredProducts, setFilteredProducts] = useState(allProducts)
-
+  // Restore user session
   useEffect(() => {
-    let filtered = allProducts
-
-    if (filters.brands.length > 0) {
-      filtered = filtered.filter((product) => filters.brands.includes(product.brand))
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData)
+        const sessionUser = parsed.user || parsed;
+        setUser(sessionUser)
+        setUserId(sessionUser.id || sessionUser._id);
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
     }
+  }, [])
 
-    if (filters.categories.length > 0) {
-      filtered = filtered.filter((product) => filters.categories.includes(product.category))
+  const fetchProducts = async (pageNumber, isNewFilter = false) => {
+    // Avoid fetching if already loading or no more data (unless it's a new filter reset)
+    if (loading && !isNewFilter) return;
+
+    setLoading(true)
+    try {
+      const params = new URLSearchParams();
+      params.append('page', pageNumber);
+      params.append('limit', '5'); // Fetch small batches as requested
+      params.append('status', 'active');
+      params.append('inStock', 'true');
+
+      if (filters.brands.length > 0) params.append('brand', filters.brands.join(','));
+      if (filters.categories.length > 0) params.append('category', filters.categories.join(','));
+      if (filters.colors.length > 0) params.append('colors', filters.colors.join(','));
+
+      params.append('minPrice', filters.priceRange[0]);
+      params.append('maxPrice', filters.priceRange[1]);
+
+      const res = await fetch(`/api/customer/products?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.success) {
+        const mappedProducts = data.products.map(p => ({
+          id: p._id,
+          title: p.name,
+          brand: p.brand?.name || p.brand || '',
+          price: p.price,
+          originalPrice: p.originalPrice,
+          image: p.thumbnail?.SD || p.images?.[0]?.SD || '/placeholder.svg',
+          category: p.category,
+          sizes: p.sizes || [],
+          colors: p.colors || [],
+          rating: p.ratings || 0,
+          reviews: p.numReviews || 0,
+          description: p.description || '',
+          inStock: !!p.inStock,
+          isSponsored: !!p.isFeatured,
+          tags: p.tags || [],
+        }));
+
+        if (isNewFilter) {
+          setProducts(mappedProducts);
+        } else {
+          setProducts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNew = mappedProducts.filter(p => !existingIds.has(p.id));
+            return [...prev, ...uniqueNew];
+          });
+        }
+        setHasMore(data.pagination.hasNextPage);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      showToast("Failed to load products", "error");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    filtered = filtered.filter(
-      (product) => product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1],
-    )
+  // Initial fetch and Filter change
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
+  }, [filters]);
 
-    if (filters.colors.length > 0) {
-      filtered = filtered.filter((product) => product.colors.some((color) => filters.colors.includes(color)))
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchProducts(nextPage);
     }
-
-    setFilteredProducts(filtered)
-  }, [filters, allProducts])
+  };
 
   const showToast = (message, type = "info") => {
     setToastMessage(message)
     setToastType(type)
     setToastVisible(true)
   }
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("authToken")
+    setUser(null)
+    setIsProfileDropdownOpen(false)
+    router.push("/login")
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isProfileDropdownOpen])
 
   const handleAddToCart = async (product) => {
     // Check if user is logged in
@@ -169,11 +171,8 @@ export default function SwipePage() {
       return
     }
 
-    // If product requires size/color selection, redirect to product details page
-    if ((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) {
-      window.location.href = `/productDetails/${product.id}`
-      return
-    }
+
+
 
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
@@ -199,9 +198,8 @@ export default function SwipePage() {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        // Update cart count
-        const totalItems = data.cart?.totalItems || 0
-        setCartCount(totalItems)
+        // Update cart count via context
+        updateCartCount()
       } else {
         showToast(data.error || "Failed to add item to cart", "error")
       }
@@ -291,8 +289,38 @@ export default function SwipePage() {
               </Link>
 
               {user ? (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-xs sm:text-sm font-semibold text-black">{user.name?.[0] || "U"}</span>
+                <div className="relative" ref={profileDropdownRef}>
+                  <button
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-2 px-2 py-1 sm:px-3 sm:py-2 border-2 border-yellow-400 rounded-lg hover:bg-yellow-50 transition-colors bg-white sm:min-w-[140px]"
+                  >
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium text-gray-900 truncate max-w-[100px]">{user.name}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                      <Link
+                        href="/customerDashboard"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-yellow-50 transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors border-t border-gray-100"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Link
@@ -313,7 +341,7 @@ export default function SwipePage() {
           <p className="text-gray-600 mb-4">Swipe up for cart, right for bucket, left to pass</p>
 
           <div className="flex justify-center items-center gap-8 text-sm text-gray-500">
-            <span>{filteredProducts.length} products available</span>
+            <span>{products.length} loaded</span>
             <span>•</span>
             <span>{cartCount} items in cart</span>
             <span>•</span>
@@ -322,15 +350,20 @@ export default function SwipePage() {
         </div>
 
         <div className="flex-1 min-h-0 relative w-full flex justify-center">
-          {filteredProducts.length > 0 ? (
+          {loading && products.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : products.length > 0 ? (
             <SwipeInterface
-              products={filteredProducts}
+              products={products}
               onAddToCart={handleAddToCart}
               onAddToBucket={handleAddToBucket}
               cartCount={cartCount}
               bucketItems={bucketItems}
               user={user}
               showToast={showToast}
+              onReachEnd={handleLoadMore}
             />
           ) : (
             <div className="text-center py-16 w-full">

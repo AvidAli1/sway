@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   ChevronDown,
   AlertCircle,
+  Gift,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -32,6 +33,7 @@ import PaymentMethods from "./components/PaymentMethods"
 import MyReviews from "./components/MyReviews"
 import Support from "./components/Support"
 import MyComplaints from "./components/MyComplaints"
+import LoyaltyRewards from "./components/LoyaltyRewards"
 
 export default function CustomerDashboard() {
   const router = useRouter()
@@ -123,6 +125,7 @@ export default function CustomerDashboard() {
     { id: "wishlist", label: "Wishlist", icon: Heart, count: stats.wishlistItems },
     { id: "addresses", label: "Addresses", icon: MapPin },
     { id: "payments", label: "Payment Methods", icon: CreditCard },
+    { id: "loyalty", label: "Loyalty & Rewards", icon: Gift }, // Add Item
     { id: "complaints", label: "Complaints", icon: AlertCircle },
     { id: "reviews", label: "My Reviews", icon: Star, count: stats.reviewsWritten },
     { id: "support", label: "Help & Support", icon: HelpCircle },
@@ -140,6 +143,8 @@ export default function CustomerDashboard() {
         return <AddressBook />
       case "payments":
         return <PaymentMethods />
+      case "loyalty":
+        return <LoyaltyRewards user={user} />
       case "complaints":
         return <MyComplaints />
       case "reviews":

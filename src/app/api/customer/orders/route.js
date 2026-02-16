@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/utils/dbConnect';
 import Order from '@/app/models/orderModel';
 import Product from '@/app/models/productModel';
+import Customer from '@/app/models/customerModel';
 import { authMiddleware } from '@/utils/authMiddleware';
 import mongoose from 'mongoose';
 
@@ -200,6 +201,18 @@ export async function POST(request) {
       });
 
       await order.save({ session });
+
+      // Award Loyalty Points for Order (50 points)
+      try {
+        const customer = await Customer.findOne({ userId: user.id }).session(session);
+        if (customer) {
+          customer.loyaltyPoints = (customer.loyaltyPoints || 0) + 50;
+          await customer.save({ session });
+        }
+      } catch (lpError) {
+        console.error("Error awarding loyalty points for order:", lpError);
+        // Non-critical, continue
+      }
 
       // Commit transaction
       await session.commitTransaction();

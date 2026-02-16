@@ -42,20 +42,8 @@ export async function GET(request) {
         // 4. Get Reviews Count
         const reviewsWritten = await Review.countDocuments({ user: userId });
 
-        // 5. Calculate Loyalty Points (Mock logic: 1 point per 1000 spent, or just mock for now)
-        // Detailed logic: sum total of all delivered orders / 1000
-        // For now, let's keep it static or random-ish based on orders to show dynamism?
-        // Let's do simple calculation if possible.
-        const ordersValue = await Order.aggregate([
-            { $match: { customer: userId, status: 'delivered' } }, // Match by string userId? Mongoose auto-casts if needed, or we cast.
-            // Wait, Order.customer is ObjectId. We should cast userId to ObjectId.
-        ]);
-
-        // Converting userId string to ObjectId for aggregate
-        // But basic countDocuments auto-casts. aggregate does NOT.
-        // Let's skip complex aggregation for now to avoid ObjectId import errors without `mongoose` import in this file scope (though we have connectToDatabase).
-        // Review count + Order count * 10 = points?
-        const loyaltyPoints = (totalOrders * 50) + (reviewsWritten * 10);
+        // 5. Get Loyalty Points
+        const loyaltyPoints = customer.loyaltyPoints || 0;
 
         return NextResponse.json({
             success: true,

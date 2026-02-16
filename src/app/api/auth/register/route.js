@@ -13,6 +13,9 @@ export async function POST(request) {
     const body = await request.json()
     const { name, email, password, phone } = body || {}
 
+    // Check for referral cookie
+    const referralCode = request.cookies.get('referral_code')?.value;
+
     // Validate required fields
     if (!name || !email || !password) {
       return new Response(
@@ -34,7 +37,7 @@ export async function POST(request) {
     const existing = await User.findOne({ email: email.toLowerCase() })
     if (existing) {
       return new Response(
-        JSON.stringify({ error: "Email already in use" }), 
+        JSON.stringify({ error: "Email already in use" }),
         { status: 409 }
       )
     }
@@ -56,9 +59,25 @@ export async function POST(request) {
       userId: user._id,
     })
 
+    // Handle Referral Reward
+    if (referralCode) {
+      try {
+        const referrer = await Customer.findOne({ referralCode });
+        if (referrer) {
+          // Award points to referrer
+          referrer.loyaltyPoints += 25;
+          await referrer.save();
+          // Optional: Log this referral event linking new user to referrer
+        }
+      } catch (refError) {
+        console.error("Error processing referral reward:", refError);
+        // Don't fail registration if referral fails
+      }
+    }
+
     // Generate email verification token
     const verificationToken = EmailVerificationToken.generateToken();
-    
+
     // Create verification token record
     const verificationRecord = await EmailVerificationToken.create({
       token: verificationToken,
@@ -74,9 +93,9 @@ export async function POST(request) {
       await User.findByIdAndDelete(user._id);
       await Customer.findByIdAndDelete(customer._id);
       await EmailVerificationToken.findByIdAndDelete(verificationRecord._id);
-      
+
       return new Response(
-        JSON.stringify({ error: 'Failed to send verification email', details: emailResult.error }), 
+        JSON.stringify({ error: 'Failed to send verification email', details: emailResult.error }),
         { status: 500 }
       );
     }
@@ -108,7 +127,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Register error:", error)
     return new Response(
-      JSON.stringify({ error: "Internal Server Error" }), 
+      JSON.stringify({ error: "Internal Server Error" }),
       { status: 500 }
     )
   }

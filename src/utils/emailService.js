@@ -1,26 +1,22 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Create transporter - you'll need to configure this with your email service
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    // Configure based on your email service (Gmail, SendGrid, etc.)
-    service: 'gmail', // or your preferred service
-    auth: {
-      user: process.env.EMAIL_USER, // Your email
-      pass: process.env.EMAIL_PASS, // Your app password or API key
-    },
-  });
-};
+// Configure Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Send Brand Invitation Email
 export const sendBrandInvitationEmail = async (email, brandName, invitationToken) => {
   try {
-    const transporter = createTransporter();
-    
     const invitationLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/brand-onboarding?token=${invitationToken}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
+
+    // Use a verified domain or "onboarding@resend.dev" for testing without domain verification
+    // For testing, "onboarding@resend.dev" works ONLY if sending to the email registered with Resend account
+    // For user-entered emails, you MUST verify your domain in Resend.
+    // Assuming development mode or verified domain:
+    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: email, // Resend free tier only allows sending to your own email unless domain verified
       subject: `Invitation to Join Sway as ${brandName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -34,30 +30,32 @@ export const sendBrandInvitationEmail = async (email, brandName, invitationToken
           <p style="color: #666; font-size: 14px;">
             This invitation link will expire in 24 hours. If you didn't expect this invitation, please ignore this email.
           </p>
-          <p style="color: #666; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${invitationLink}">${invitationLink}</a>
-          </p>
         </div>
       `,
-    };
+    });
 
-    const result = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: result.messageId };
+    if (error) {
+      console.error('Error sending brand email via Resend:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data.id };
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending brand email:', error);
     return { success: false, error: error.message };
   }
 };
 
+// Send Email Verification Email
 export const sendEmailVerificationEmail = async (email, userName, verificationToken) => {
   try {
-    const transporter = createTransporter();
-    
     const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+
+    // Use a verified domain or "onboarding@resend.dev" for testing
+    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
       to: email,
       subject: 'Verify Your Email - Sway',
       html: `
@@ -72,16 +70,16 @@ export const sendEmailVerificationEmail = async (email, userName, verificationTo
           <p style="color: #666; font-size: 14px;">
             This verification link will expire in 24 hours. If you didn't create an account with Sway, please ignore this email.
           </p>
-          <p style="color: #666; font-size: 14px;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${verificationLink}">${verificationLink}</a>
-          </p>
         </div>
       `,
-    };
+    });
 
-    const result = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: result.messageId };
+    if (error) {
+      console.error('Error sending verification email via Resend:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data.id };
   } catch (error) {
     console.error('Error sending verification email:', error);
     return { success: false, error: error.message };

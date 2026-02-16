@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, Archive, ShoppingBag, Star } from "lucide-react"
 
-export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket, user, showToast }) {
+export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket, user, showToast, onReachEnd }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
 
@@ -159,6 +159,9 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     }
 
     const animateSwipe = (endX, endY, duration = 300, actionCallback, direction) => {
+        // Increment swipe count immediately to capture it even if navigation occurs
+        swipeCountRef.current += 1;
+
         setIsAnimating(true)
         isAnimatingRef.current = true
         if (cardRef.current) {
@@ -190,11 +193,46 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
     const handleSwipeRight = () => animateSwipe(1000, 0, 500, () => onAddToBucket(currentProduct), 'right')
     const handleSwipeLeft = () => animateSwipe(-1000, 0, 500, null, 'left')
 
+    // Swipe tracking for Loyalty Points
+    const swipeCountRef = useRef(0);
+
+    // Send swipe count on unmount
+    useEffect(() => {
+        return () => {
+            const count = swipeCountRef.current;
+            if (count > 0 && user) {
+                // Send beacon or fetch with keepalive if possible, but standard fetch works in most modern browsers for unmount
+                // Beacon is safer for unmount data
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    fetch('/api/loyalty/swipes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ count }),
+                        keepalive: true
+                    });
+                }
+            }
+        };
+    }, [user]);
+
     const nextProductIdx = () => {
+        // Check if we need to load more
+        if (onReachEnd && products.length - currentIndex < 3) {
+            onReachEnd();
+        }
+
         if (currentIndex < products.length - 1) {
             setCurrentIndex(prev => prev + 1)
         } else {
-            setCurrentIndex(0) // Loop
+            // If strictly infinite, we might not want to loop, or we loop back if no more data.
+            // For now, loop back is existing behavior, but with infinite scroll it might be weird.
+            // But let's keep it safe: if we have more data coming, we won't hit else.
+            // If we hit else, it means we ran out of data even after fetch attempts.
+            setCurrentIndex(0)
         }
 
         // Reset card styling for next item
@@ -226,8 +264,8 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
         <div className="h-full w-full bg-white flex flex-col">
             {/* Top Indicators */}
             <div className="flex justify-center gap-6 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 z-10 shrink-0">
-                <span className="flex items-center gap-1">Cart <ArrowRight className="w-3 h-3" /></span>
-                <span className="flex items-center gap-1"><ArrowUp className="w-3 h-3" /> Bucket</span>
+                <span className="flex items-center gap-1">Bucket <ArrowRight className="w-3 h-3" /></span>
+                <span className="flex items-center gap-1"><ArrowUp className="w-3 h-3" /> Cart</span>
                 <span className="flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Pass</span>
             </div>
 
@@ -279,7 +317,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                     <div className="absolute top-6 left-6 right-6 flex justify-between items-start text-white pointer-events-none z-30">
                         <div className="max-w-[70%]">
                             <h1 className="text-3xl font-extrabold leading-tight drop-shadow-md">{currentProduct.title}</h1>
-                            <p className="text-white/80 text-sm font-medium mt-1">{currentProduct.brand}</p>
+                            <p className="text-white/80 text-sm font-medium mt-1">{currentProduct.brand?.name || currentProduct.brand}</p>
                         </div>
                         <div className="text-right">
                             <span className="block text-yellow-400 font-bold text-xl whitespace-nowrap drop-shadow-md">PKR {currentProduct.price.toLocaleString()}</span>
