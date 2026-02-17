@@ -115,24 +115,27 @@ export default function VirtualTryOnPage() {
                 return
             }
 
-            // 2. Fetch Garment Blob
-            // Note: If CORS blocks S3, we might need a proxy. Assuming standard public access works.
-            const garmentRes = await fetch(garmentUrl)
+            // 2. Fetch Garment Blob using server proxy to bypass CORS
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(garmentUrl)}`
+            const garmentRes = await fetch(proxyUrl)
+            if (!garmentRes.ok) {
+                throw new Error("Failed to fetch garment image via proxy")
+            }
             const garmentBlob = await garmentRes.blob()
 
             // 3. Map Apparel Type
             let apparelType = 'shirt' // default
+            const title = (product.title || '').toLowerCase()
             const cat = (product.category || '').toLowerCase()
             const subCat = (product.subCategory || '').toLowerCase()
+            const searchString = `${title} ${cat} ${subCat}`
 
-            if (cat === 'bottoms' || cat.includes('pant') || cat.includes('jean') || cat.includes('trouser') || cat.includes('skirt')) {
-                apparelType = 'pants' // Common mapping for lower body? User API example might need 'lower_body'? 
-                // User said: "apparel_type which is like shirt or so on". Postman shows "shirt".
-                // I will assume 'shirt', 'pants', 'dress' are the keys based on common VTON.
-            } else if (cat === 'dresses' || cat.includes('dress') || cat.includes('gown')) {
+            if (searchString.includes('dress') || searchString.includes('frock') || searchString.includes('gown') || searchString.includes('maxi')) {
                 apparelType = 'dress'
-            } else if (cat === 'tops' || cat.includes('shirt') || cat === 'outerwear') {
-                apparelType = 'shirt' // 'upper_body' usually
+            } else if (searchString.includes('pant') || searchString.includes('jean') || searchString.includes('trouser') || searchString.includes('short') || searchString.includes('bottom') || searchString.includes('skirt')) {
+                apparelType = 'pants'
+            } else if (searchString.includes('shirt') || searchString.includes('top') || searchString.includes('tee') || searchString.includes('hoodie') || searchString.includes('jacket') || searchString.includes('sweater') || searchString.includes('coat') || searchString.includes('upper')) {
+                apparelType = 'shirt'
             }
 
             // 4. Prepare FormData
@@ -169,6 +172,7 @@ export default function VirtualTryOnPage() {
             })
 
             const data = await response.json()
+            console.log("VTON API Response:", data)
 
             if (data.status === 'success' && data.result_url) {
                 setGeneratedImage(data.result_url)
@@ -409,7 +413,7 @@ export default function VirtualTryOnPage() {
                                 <h4 className="text-lg font-semibold text-gray-700 mb-4">With {product.title}</h4>
                                 <div className="relative">
                                     <img
-                                        src={generatedImage || "/placeholder.svg"}
+                                        src={generatedImage ? `/api/proxy-image?url=${encodeURIComponent(generatedImage)}` : "/placeholder.svg"}
                                         alt="Virtual Try-On Result"
                                         className="w-full h-80 object-contain rounded-xl shadow-lg"
                                     />
