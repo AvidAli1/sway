@@ -1,4 +1,4 @@
-const RECOMMENDATION_SERVICE_URL = 'http://localhost:8000';
+const RECOMMENDATION_SERVICE_URL = 'https://avidali1-sway-recommendation-api.hf.space';
 
 /**
  * Generate embedding for a text string.
