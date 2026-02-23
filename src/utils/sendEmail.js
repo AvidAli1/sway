@@ -1,21 +1,43 @@
-import { Resend } from 'resend';
+// import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// const resend = new Resend(process.env.RESEND_API_KEY);
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export const sendEmail = async ({ to, subject, html }) => {
-    try {
-        const data = await resend.emails.send({
-            from: 'Sway <onboarding@resend.dev>', // Update this with your verified domain
-            to,
-            subject,
-            html,
-        });
+  try {
+    const fromEmail = process.env.GMAIL_USER || 'onboarding@resend.dev';
 
-        return { success: true, data };
-    } catch (error) {
-        console.error('Error sending email:', error);
-        return { success: false, error };
-    }
+    /*
+    const data = await resend.emails.send({
+        from: 'Sway <onboarding@resend.dev>', // Update this with your verified domain
+        to,
+        subject,
+        html,
+    });
+
+    return { success: true, data };
+    */
+
+    const info = await transporter.sendMail({
+      from: `"Sway" <${fromEmail}>`,
+      to,
+      subject,
+      html,
+    });
+
+    return { success: true, data: info };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return { success: false, error };
+  }
 };
 
 const getCommonStyle = () => `
@@ -43,9 +65,9 @@ const getFooter = () => `
 `;
 
 const getOrderItemsList = (items, currency) => {
-    if (!items || items.length === 0) return '';
+  if (!items || items.length === 0) return '';
 
-    const itemsHtml = items.map(item => `
+  const itemsHtml = items.map(item => `
     <div style="border-bottom: 1px solid #eeeeee; padding: 10px 0; display: flex; justify-content: space-between;">
       <div style="flex: 1; padding-right: 10px;">
         <span style="font-weight: bold; display: block;">${item.productSnapshot?.name || 'Product'}</span>
@@ -57,7 +79,7 @@ const getOrderItemsList = (items, currency) => {
     </div>
   `).join('');
 
-    return `
+  return `
     <div style="margin-top: 20px;">
       <h3 style="border-bottom: 2px solid #facc15; display: inline-block; padding-bottom: 5px; margin-bottom: 15px;">Order Items</h3>
       ${itemsHtml}
@@ -66,7 +88,7 @@ const getOrderItemsList = (items, currency) => {
 };
 
 export const getOrderConfirmedTemplate = (order, customerName) => {
-    return `
+  return `
     <!DOCTYPE html>
     <html>
     <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
@@ -103,7 +125,7 @@ export const getOrderConfirmedTemplate = (order, customerName) => {
 };
 
 export const getOutForDeliveryTemplate = (order, customerName) => {
-    return `
+  return `
     <!DOCTYPE html>
     <html>
     <body style="margin: 0; padding: 0; background-color: #f4f4f4;">

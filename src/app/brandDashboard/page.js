@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Send,
   X,
+  Wallet,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -33,6 +34,7 @@ import DeliveredOrders from "./components/DeliveredOrders"
 import Reviews from "./components/Reviews"
 import ReturnsRefunds from "./components/ReturnsRefunds"
 import BrandComplaints from "./components/BrandComplaints"
+import BrandWallet from "./components/BrandWallet"
 
 export default function BrandDashboard() {
   const router = useRouter()
@@ -247,6 +249,7 @@ export default function BrandDashboard() {
     { id: "newOrders", label: "New Orders", icon: ShoppingBag, count: stats.newOrders, badge: true },
     { id: "pendingOrders", label: "Pending Orders", icon: Clock, count: stats.pendingOrders },
     { id: "deliveredOrders", label: "Delivered Orders", icon: CheckCircle, count: stats.deliveredOrders },
+    { id: "wallet", label: "Wallet & Finances", icon: Wallet, count: 0 },
     { id: "reviews", label: "Reviews", icon: Star, count: stats.totalReviews },
     { id: "returns", label: "Returns & Refunds", icon: RefreshCw, count: stats.pendingReturns, badge: true },
     { id: "complaints", label: "Complaints", icon: MessageSquare, count: 0 },
@@ -262,6 +265,8 @@ export default function BrandDashboard() {
         return <PendingOrders />
       case "deliveredOrders":
         return <DeliveredOrders />
+      case "wallet":
+        return <BrandWallet />
       case "reviews":
         return <Reviews />
       case "returns":

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, Mail, Lock, Phone, MapPin, Building2, FileText } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, Building2, FileText, X } from 'lucide-react';
 
 export default function BrandOnboarding() {
   const [token, setToken] = useState('');
@@ -21,13 +21,13 @@ export default function BrandOnboarding() {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
 
     // Brand data
     brandName: '',
     description: '',
     businessEmail: '',
-    brandPhone: '',
     address: '',
     city: '',
     state: '',
@@ -35,6 +35,9 @@ export default function BrandOnboarding() {
     logo: '',
     bannerImage: '',
   });
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     const tokenFromUrl = searchParams.get('token');
@@ -88,21 +91,83 @@ export default function BrandOnboarding() {
     }));
   };
 
+  const handleRemoveImage = (field) => {
+    // Reset file input logic via ID so standard "Choose file" text changes back
+    const fileInput = document.getElementById(field);
+    if (fileInput) fileInput.value = '';
+
+    setFormData(prev => ({
+      ...prev,
+      [field]: '',
+    }));
+  };
+
+  const handleImageUpload = async (e, field) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (field === 'logo') setUploadingLogo(true);
+    else setUploadingBanner(true);
+    setError('');
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setFormData(prev => ({
+          ...prev,
+          [field]: data.url,
+        }));
+      } else {
+        setError(data.error || `Failed to upload ${field}`);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(`Failed to upload ${field}`);
+    } finally {
+      if (field === 'logo') setUploadingLogo(false);
+      else setUploadingBanner(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setSubmitting(false);
+      return;
+    }
+
+    if (!formData.logo || !formData.bannerImage) {
+      setError('Logo and Banner Image are required');
+      setSubmitting(false);
+      return;
+    }
+
     try {
+      const payload = {
+        token,
+        ...formData,
+        brandPhone: formData.phone // Use the same phone for brand
+      };
+      delete payload.confirmPassword;
+
       const response = await fetch('/api/brand/complete-onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          token,
-          ...formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -253,6 +318,30 @@ export default function BrandOnboarding() {
                     </div>
                   </div>
 
+                  {/* Confirm Password */}
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password *
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        required
+                        minLength={6}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                        placeholder="Confirm your password"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+
                   {/* Phone Number */}
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
@@ -345,22 +434,72 @@ export default function BrandOnboarding() {
                   </div>
                 </div>
 
-                {/* Brand Phone */}
-                <div>
-                  <label htmlFor="brandPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Brand Phone Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="tel"
-                      id="brandPhone"
-                      name="brandPhone"
-                      value={formData.brandPhone}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                      placeholder="+92 300 1234567"
-                    />
+                {/* Images Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Logo Upload */}
+                  <div>
+                    <label htmlFor="logo" className="block text-sm font-medium text-gray-700 mb-1">
+                      Brand Logo *
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="file"
+                        id="logo"
+                        name="logo"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'logo')}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                        disabled={uploadingLogo}
+                      />
+                      {uploadingLogo && <span className="text-sm text-gray-500 ml-2">Uploading...</span>}
+                      {formData.logo && !uploadingLogo && <span className="text-sm text-green-500 mx-2">✓ Uploaded</span>}
+                    </div>
+                    {formData.logo && (
+                      <div className="mt-2 relative inline-block">
+                        <img src={formData.logo} alt="Brand Logo Preview" className="h-16 w-auto object-contain rounded border" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('logo')}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none"
+                          title="Remove Logo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Banner Image Upload */}
+                  <div>
+                    <label htmlFor="bannerImage" className="block text-sm font-medium text-gray-700 mb-1">
+                      Brand Banner Image *
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="file"
+                        id="bannerImage"
+                        name="bannerImage"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'bannerImage')}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                        disabled={uploadingBanner}
+                      />
+                      {uploadingBanner && <span className="text-sm text-gray-500 ml-2">Uploading...</span>}
+                      {formData.bannerImage && !uploadingBanner && <span className="text-sm text-green-500 mx-2">✓ Uploaded</span>}
+                    </div>
+                    {formData.bannerImage && (
+                      <div className="mt-2 relative inline-block">
+                        <img src={formData.bannerImage} alt="Brand Banner Preview" className="h-16 w-full object-cover rounded border" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('bannerImage')}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none"
+                          title="Remove Banner"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
