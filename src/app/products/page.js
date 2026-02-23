@@ -22,8 +22,9 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import ToastNotification from "../components/ToastNotification"
 import { useCart } from "../context/CartContext"
+import { Suspense } from "react"
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams()
   const { cartCount, updateCartCount } = useCart()
   const [user, setUser] = useState(null)
@@ -857,6 +858,18 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
+      </div>
+    }>
+      <ProductsPageContent />
+    </Suspense>
   )
 }
 

@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function VerifyEmail() {
+function VerifyEmailContent() {
   const [status, setStatus] = useState('verifying'); // 'verifying', 'success', 'error'
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  
+
   const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
     const token = searchParams.get('token');
-    
+
     if (!token) {
       setStatus('error');
       setError('No verification token provided');
@@ -38,7 +38,7 @@ export default function VerifyEmail() {
       if (response.ok) {
         setStatus('success');
         setMessage(data.message);
-        
+
         // Redirect to login page after 3 seconds
         setTimeout(() => {
           router.push('/login');
@@ -58,7 +58,7 @@ export default function VerifyEmail() {
     try {
       // Get email from localStorage or prompt user
       const email = localStorage.getItem('pendingVerificationEmail') || prompt('Please enter your email address:');
-      
+
       if (!email) {
         setError('Email address is required');
         return;
@@ -148,4 +148,19 @@ export default function VerifyEmail() {
   }
 
   return null;
+}
+
+export default function VerifyEmail() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-2">Loading...</h1>
+        </div>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
+  );
 }
