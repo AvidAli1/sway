@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import ToastNotification from "../components/ToastNotification"
+import ToastNotification from "../../components/ToastNotification"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -100,45 +100,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full">
       <ToastNotification
         message={toastMessage}
         isVisible={toastVisible}
         onClose={() => setToastVisible(false)}
         type={toastType}
       />
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="sm:hidden">Back</span>
-            <span className="hidden sm:inline">Back to Home</span>
-          </Link>
-
-          <h1 className="text-xl sm:text-2xl font-bold text-black absolute left-[48%] sm:left-[50%] transform -translate-x-1/2">
-            <img src="/logo2.png" alt="Logo" className="h-9 w-auto inline" />
-          </h1>
-
-          {/* Login/Signup Toggle - Responsive */}
-          <div className="flex justify-center">
-            <div className="flex flex-col sm:flex-row bg-gray-100 rounded-lg p-1 w-20 sm:w-60">
-              <Link
-                href="/login"
-                className="flex-1 py-2 px-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap bg-white text-gray-900 shadow-sm text-center"
-              >
-                Login
-              </Link>
-              <Link
-                href="/signup"
-                className="flex-1 py-2 px-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap text-gray-600 hover:text-gray-900 text-center"
-              >
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content - Responsive spacing */}
       <div className="px-4 sm:px-6">

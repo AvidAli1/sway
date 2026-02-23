@@ -7,6 +7,7 @@ export default function AdminComplaints() {
     const [complaints, setComplaints] = useState([])
     const [loading, setLoading] = useState(true)
     const [filterStatus, setFilterStatus] = useState("All")
+    const [userType, setUserType] = useState("All")
     const [selectedComplaint, setSelectedComplaint] = useState(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -16,13 +17,12 @@ export default function AdminComplaints() {
 
     useEffect(() => {
         fetchComplaints()
-    }, [filterStatus])
+    }, [filterStatus, userType])
 
     const fetchComplaints = async () => {
         setLoading(true)
         try {
-            let url = "/api/admin/complaints"
-            if (filterStatus !== "All") url += `?status=${filterStatus}`
+            let url = `/api/admin/complaints?status=${filterStatus}&userType=${userType}`
 
             const res = await fetch(url, {
                 headers: {
@@ -93,11 +93,33 @@ export default function AdminComplaints() {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Complaints Management</h2>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 items-center">
+                    {/* User Type Toggle */}
+                    <div className="bg-gray-200 p-1 rounded-lg flex gap-1">
+                        <button
+                            onClick={() => setUserType("All")}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${userType === "All" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            All
+                        </button>
+                        <button
+                            onClick={() => setUserType("Customers")}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${userType === "Customers" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            Customers
+                        </button>
+                        <button
+                            onClick={() => setUserType("Brands")}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${userType === "Brands" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            Brands
+                        </button>
+                    </div>
+
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                        className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-yellow-400 focus:outline-none"
                     >
                         <option value="All">All Status</option>
                         <option value="Open">Open</option>

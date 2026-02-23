@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminLayout({ children }) {
     const router = useRouter()
+    const pathname = usePathname()
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -55,13 +56,24 @@ export default function AdminLayout({ children }) {
                 </div>
 
                 <nav className="mt-6">
-                    <Link href="/admin/dashboard" className="block py-3 px-6 text-yellow-400 bg-gray-900 border-l-4 border-yellow-400">
+                    <Link
+                        href="/admin/dashboard"
+                        className={`block py-3 px-6 transition-colors ${pathname === '/admin/dashboard' ? 'text-yellow-400 bg-gray-900 border-l-4 border-yellow-400' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                    >
                         Dashboard
                     </Link>
-                    <Link href="/admin/complaints" className="block py-3 px-6 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                    <Link
+                        href="/admin/complaints"
+                        className={`block py-3 px-6 transition-colors ${pathname === '/admin/complaints' ? 'text-yellow-400 bg-gray-900 border-l-4 border-yellow-400' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                    >
                         Complaints
                     </Link>
-                    {/* Add more admin links here later */}
+                    <Link
+                        href="/admin/invites"
+                        className={`block py-3 px-6 transition-colors ${pathname === '/admin/invites' ? 'text-yellow-400 bg-gray-900 border-l-4 border-yellow-400' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                    >
+                        Send Invites
+                    </Link>
                 </nav>
             </aside>
 

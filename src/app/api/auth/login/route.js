@@ -12,13 +12,16 @@ export async function POST(request) {
 
     const { email, password } = await request.json();
 
-    // Check for hardcoded admin credentials
-    if (email === 'admin@sway.com' && password === 'admin123') {
+    // Check for admin credentials from .env
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@sway.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (email === adminEmail && password === adminPassword) {
       const adminId = '000000000000000000000001';
       const token = jwt.sign(
         {
           userId: adminId,
-          email: 'admin@sway.com',
+          email: adminEmail,
           role: 'admin'
         },
         process.env.JWT_SECRET,

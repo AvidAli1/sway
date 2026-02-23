@@ -28,15 +28,24 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get("status");
         const type = searchParams.get("type");
+        const userType = searchParams.get("userType"); // Add userType parameter
 
         const query = {};
         if (status && status !== "All") query.status = status;
         if (type && type !== "All") query.type = type;
 
-        const complaints = await Complaint.find(query)
+        // Note: Filtering by user role initially requires us to join/populate the User.
+        // Mongoose doesn't natively filter child population by default without aggregations 
+        // or a two-step query. We will fetch and populate, then filter locally if userType is specified.
+        let complaints = await Complaint.find(query)
             .sort({ createdAt: -1 })
-            .populate("user", "name email")
+            .populate("user", "name email role") // ensure role is fetched
             .populate("order", "orderNumber");
+
+        if (userType && userType !== "All") {
+            const roleMatch = userType === "Customers" ? "customer" : "brand";
+            complaints = complaints.filter(c => c.user && c.user.role === roleMatch);
+        }
 
         return NextResponse.json({ success: true, complaints });
 
