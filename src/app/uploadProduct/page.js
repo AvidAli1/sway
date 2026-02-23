@@ -258,12 +258,7 @@ export default function BrandProductUpload() {
             }
 
             setSuccessMsg(data?.message || 'Product uploaded successfully')
-            if (data?.extractedFeatures) {
-                setExtractedFeatures(data.extractedFeatures)
-                // Don't auto-redirect so user can see features
-            } else {
-                setTimeout(() => router.push('/brandDashboard'), 1200)
-            }
+            setTimeout(() => router.push('/brandDashboard'), 1200)
         } catch (err) {
             console.error('Error uploading product:', err)
             setErrorMsg(err.message || 'Failed to upload product')
@@ -319,32 +314,7 @@ export default function BrandProductUpload() {
                     </div>
                 )}
 
-                {extractedFeatures && (
-                    <div className="mb-6 bg-white border border-yellow-200 rounded-lg shadow-sm overflow-hidden">
-                        <div className="bg-yellow-50 px-4 py-3 border-b border-yellow-200">
-                            <h3 className="font-semibold text-yellow-800">CLIP Extracted Features</h3>
-                            <p className="text-sm text-yellow-700">These features were automatically extracted from your product thumbnail for AI recommendations.</p>
-                        </div>
-                        <div className="p-4">
-                            <ul className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {extractedFeatures.map((f, idx) => (
-                                    <li key={idx} className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded border border-gray-100">
-                                        <span className="font-medium">{f.feature}</span>
-                                        <span className="text-gray-500">{(f.score * 100).toFixed(1)}%</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="mt-4 flex justify-end">
-                                <button
-                                    onClick={() => router.push('/brandDashboard')}
-                                    className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 rounded-lg font-medium transition-colors"
-                                >
-                                    Go to Dashboard
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+
 
                 {previewMode ? (
                     <ProductPreview formData={formData} />

@@ -46,6 +46,8 @@ export default function ProductsPage() {
   const [subCategoriesList, setSubCategoriesList] = useState([])
   const [brandsList, setBrandsList] = useState([])
   const [colorsList, setColorsList] = useState([])
+  const [seasonsList, setSeasonsList] = useState([])
+  const [maxAvailablePrice, setMaxAvailablePrice] = useState(15000)
   const [hasMore, setHasMore] = useState(true)
   const observerTarget = useRef(null)
 
@@ -59,6 +61,7 @@ export default function ProductsPage() {
     ],
     sizes: searchParams.get('sizes') ? searchParams.get('sizes').split(',') : [],
     colors: searchParams.get('colors') ? searchParams.get('colors').split(',') : [],
+    seasons: searchParams.get('season') ? searchParams.get('season').split(',') : [],
     rating: searchParams.get('rating') ? parseInt(searchParams.get('rating')) : 0,
     inStock: searchParams.get('inStock') === 'true',
   })
@@ -131,6 +134,7 @@ export default function ProductsPage() {
       if (filters.brands && filters.brands.length > 0) p.append('brand', filters.brands.join(','))
       if (filters.sizes && filters.sizes.length > 0) p.append('sizes', filters.sizes.join(','))
       if (filters.colors && filters.colors.length > 0) p.append('colors', filters.colors.join(','))
+      if (filters.seasons && filters.seasons.length > 0) p.append('season', filters.seasons.join(','))
       if (filters.priceRange) {
         p.append('minPrice', String(filters.priceRange[0] || 0))
         p.append('maxPrice', String(filters.priceRange[1] || 0))
@@ -235,8 +239,11 @@ export default function ProductsPage() {
         if (data.filters.subCategories) setSubCategoriesList(data.filters.subCategories)
         if (data.filters.brands) setBrandsList(data.filters.brands)
         if (data.filters.colors) setColorsList(data.filters.colors)
+        if (data.filters.seasons) setSeasonsList(data.filters.seasons)
 
         // Only update price range based on actual data bounds
+        const fetchedMaxPrice = data.filters.priceRange && data.filters.priceRange.maxPrice > 0 ? data.filters.priceRange.maxPrice : 15000;
+        setMaxAvailablePrice(fetchedMaxPrice);
         const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
 
         // Don't auto-select categories, just update keys if needed or rely on categoriesList
@@ -309,6 +316,7 @@ export default function ProductsPage() {
       if (filters.brands && filters.brands.length > 0) params.append('brand', filters.brands.join(','))
       if (filters.sizes && filters.sizes.length > 0) params.append('sizes', filters.sizes.join(','))
       if (filters.colors && filters.colors.length > 0) params.append('colors', filters.colors.join(','))
+      if (filters.seasons && filters.seasons.length > 0) params.append('season', filters.seasons.join(','))
       if (filters.priceRange) {
         params.append('minPrice', String(filters.priceRange[0] || 0))
         params.append('maxPrice', String(filters.priceRange[1] || 0))
@@ -486,9 +494,10 @@ export default function ProductsPage() {
     setFilters({
       brands: [],
       categories: [],
-      priceRange: [0, 15000],
+      priceRange: [0, maxAvailablePrice],
       sizes: [],
       colors: [],
+      seasons: [],
       rating: 0,
       inStock: false,
     })
@@ -673,6 +682,8 @@ export default function ProductsPage() {
                 brands={brandsList.length > 0 ? brandsList : brands}
                 categories={subCategoriesList}
                 colors={colorsList.length > 0 ? colorsList : colors}
+                seasons={seasonsList}
+                maxAvailablePrice={maxAvailablePrice}
                 onFilterChange={handleFilterChange}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
@@ -821,6 +832,8 @@ export default function ProductsPage() {
                 brands={brandsList.length > 0 ? brandsList : brands}
                 categories={subCategoriesList}
                 colors={colorsList.length > 0 ? colorsList : colors}
+                seasons={seasonsList}
+                maxAvailablePrice={maxAvailablePrice}
                 onFilterChange={handleFilterChange}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
@@ -848,9 +861,7 @@ export default function ProductsPage() {
 }
 
 // Filter Content Component
-// Filter Content Component
-// Filter Content Component
-function FilterContent({ filters, brands, categories, colors, onFilterChange, sortBy, setSortBy }) {
+function FilterContent({ filters, brands, categories, colors, seasons, maxAvailablePrice, onFilterChange, sortBy, setSortBy }) {
   const [brandSearch, setBrandSearch] = useState("")
   const [categorySearch, setCategorySearch] = useState("")
 
@@ -934,14 +945,39 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
         </div>
       </div>
 
+      {/* Seasons */}
+      <div>
+        <h3 className="font-semibold mb-3">Seasons</h3>
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+          {(seasons || []).map((season) => {
+            const isChecked = filters.seasons.includes(season)
+            return (
+              <label key={season} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded group">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => onFilterChange("seasons", season)}
+                  className="sr-only"
+                />
+                <div className={`mr-3 w-4 h-4 rounded-full border flex items-center justify-center transition-all ${isChecked ? "bg-yellow-400 border-yellow-400" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                  {isChecked && <Check className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                </div>
+                <span className={`text-sm capitalize truncate ${isChecked ? "font-medium text-black" : "text-gray-600"}`} title={season}>{season}</span>
+              </label>
+            )
+          })}
+          {(!seasons || seasons.length === 0) && <p className="text-xs text-gray-500">No seasons found</p>}
+        </div>
+      </div>
+
       {/* Price Range */}
       <div>
         <h3 className="font-semibold mb-3">Price Range</h3>
         <input
           type="range"
           min="0"
-          max={15000}
-          // Ideally max should be dynamic but using fixed for now based on props
+          max={maxAvailablePrice || 15000}
+          // Dynamic maximum price from the backend products collection
           value={filters.priceRange[1]}
           onChange={(e) => onFilterChange("priceRange", [0, Number.parseInt(e.target.value)])}
           className="w-full accent-yellow-400"

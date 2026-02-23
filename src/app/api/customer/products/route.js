@@ -22,6 +22,7 @@ export async function GET(request) {
     const maxPrice = parseFloat(searchParams.get('maxPrice'));
     const brand = searchParams.get('brand');
     const colorsParam = searchParams.get('colors');
+    const seasonParam = searchParams.get('season');
     const search = searchParams.get('search');
     const ratingParam = searchParams.get('rating');
     const rating = ratingParam ? parseFloat(ratingParam) : null;
@@ -105,6 +106,10 @@ export async function GET(request) {
 
     if (colorsParam) {
       query.colors = { $in: colorsParam.split(',') };
+    }
+
+    if (seasonParam) {
+      query.season = { $in: seasonParam.split(',') };
     }
 
     if (featured) {
@@ -313,6 +318,7 @@ export async function GET(request) {
       const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
       const brands = brandDocs.map(b => b.name).sort();
       const colors = await Product.distinct('colors', { status: 'active' });
+      const seasons = await Product.distinct('season', { status: 'active' });
       const priceRange = await Product.aggregate([
         { $match: { status: 'active', inStock: true } },
         { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
@@ -334,6 +340,7 @@ export async function GET(request) {
           subCategories,
           brands,
           colors,
+          seasons,
           priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
         }
       });
@@ -424,6 +431,7 @@ export async function GET(request) {
 
     // Get distinct colors
     const colors = await Product.distinct('colors', { status: 'active' });
+    const seasons = await Product.distinct('season', { status: 'active' });
 
     // Get price range
     const priceRange = await Product.aggregate([
@@ -447,6 +455,7 @@ export async function GET(request) {
         subCategories,
         brands,
         colors,
+        seasons,
         priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
       }
     });
