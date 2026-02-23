@@ -72,22 +72,22 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-4">Customer Service</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/help" className="text-gray-400 hover:text-yellow-400 transition-colors">
+                <Link href="/help" className="text-gray-400 hover:text-yellow-400 transition-colors" prefetch={false}>
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="text-gray-400 hover:text-yellow-400 transition-colors">
+                <Link href="/returns" className="text-gray-400 hover:text-yellow-400 transition-colors" prefetch={false}>
                   Returns
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-gray-400 hover:text-yellow-400 transition-colors">
+                <Link href="/shipping" className="text-gray-400 hover:text-yellow-400 transition-colors" prefetch={false}>
                   Shipping Info
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-400 hover:text-yellow-400 transition-colors">
+                <Link href="/contact" className="text-gray-400 hover:text-yellow-400 transition-colors" prefetch={false}>
                   Contact Us
                 </Link>
               </li>
