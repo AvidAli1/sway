@@ -5,6 +5,7 @@ import Brand from '@/app/models/brandModel';
 
 import Customer from '@/app/models/customerModel';
 import { authMiddleware } from '@/utils/authMiddleware';
+import { getTextEmbedding } from '@/utils/recommendationService';
 
 // GET /api/customer/products - Get products for customers with infinite scroll
 export async function GET(request) {
@@ -122,18 +123,11 @@ export async function GET(request) {
 
     if (search) {
       try {
-        const embedRes = await fetch("http://127.0.0.1:8000/embed-text", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: search })
-        });
-        if (embedRes.ok) {
-          const embedData = await embedRes.json();
-          if (embedData.embedding) {
-            searchEmbedding = embedData.embedding;
-            queryVector = searchEmbedding;
-            isSemanticSearch = true;
-          }
+        const embedData = await getTextEmbedding(search);
+        if (embedData && embedData.embedding) {
+          searchEmbedding = embedData.embedding;
+          queryVector = searchEmbedding;
+          isSemanticSearch = true;
         }
       } catch (e) {
         console.error("Semantic search embedding failed:", e);
