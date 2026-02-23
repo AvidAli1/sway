@@ -403,12 +403,17 @@ export default function BrandOrderDetailsPage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-4 py-1.5 text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>

@@ -15,8 +15,12 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={inter.className}>
         <CartProvider>
-          {children}
-          <Footer />
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-grow flex flex-col min-h-screen">
+              {children}
+            </main>
+            <Footer />
+          </div>
         </CartProvider>
       </body>
     </html>

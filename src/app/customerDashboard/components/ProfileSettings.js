@@ -16,7 +16,7 @@ export default function ProfileSettings({ user }) {
     // harmonized with backend: use stylePreferences (array of strings)
     stylePreferences: user?.stylePreferences || [],
     newsletterOptIn: user?.newsletterOptIn || false,
-    
+
     size: user?.size || [],
     addresses: user?.addresses || [],
   })
@@ -24,6 +24,7 @@ export default function ProfileSettings({ user }) {
   const [saveFeedback, setSaveFeedback] = useState(null)
   const [showNotification, setShowNotification] = useState(false)
   const [notificationMessage, setNotificationMessage] = useState("")
+  const [newStyle, setNewStyle] = useState("")
 
   // Initialize formData from provided `user` prop or from localStorage (login response)
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function ProfileSettings({ user }) {
   }, [user])
 
   const handleSave = () => {
-    ;(async () => {
+    ; (async () => {
       setSaveLoading(true)
       setSaveFeedback(null)
       try {
@@ -131,15 +132,38 @@ export default function ProfileSettings({ user }) {
           setShowNotification(true)
           // auto-hide after 4s
           setTimeout(() => setShowNotification(false), 4000)
-          // update localStorage user with returned user if present
-          if (data?.user) {
+          // update localStorage user with returned user/customer if present
+          if (data?.user || data?.customer) {
             try {
               const current = JSON.parse(localStorage.getItem("user") || "null") || {}
-              localStorage.setItem("user", JSON.stringify({ ...current, ...data.user }))
-            } catch (e) {}
+
+              // We need to carefully merge.
+              // If 'current' has { user, customer, token }, we should update current.user and current.customer
+              const newSession = { ...current }
+
+              if (data.user) {
+                // Update nested user if it exists, or root fields if that's the structure. 
+                // Assuming standard { user: {}, customer: {}, token: ... } structure based on initial read logic
+                if (newSession.user) {
+                  newSession.user = { ...newSession.user, ...data.user }
+                } else {
+                  // If no nested user, maybe the root IS the user (legacy)? 
+                  // But let's stick to non-destructive merge logic
+                  Object.assign(newSession, data.user)
+                }
               }
-              // exit edit mode so Save/Cancel disappear and Edit Profile reappears
-              setIsEditing(false)
+
+              if (data.customer) {
+                newSession.customer = { ...(newSession.customer || {}), ...data.customer }
+              }
+
+              localStorage.setItem("user", JSON.stringify(newSession))
+            } catch (e) {
+              console.warn("Failed to update localStorage", e)
+            }
+          }
+          // exit edit mode so Save/Cancel disappear and Edit Profile reappears
+          setIsEditing(false)
         } else {
           setSaveFeedback(data?.error || data?.message || "Failed to update profile")
         }
@@ -163,7 +187,7 @@ export default function ProfileSettings({ user }) {
       // removed frontend-only fields; keep stylePreferences which backend persists
       stylePreferences: user?.stylePreferences || [],
       newsletterOptIn: user?.newsletterOptIn || false,
-      
+
       size: user?.size || [],
       addresses: user?.addresses || [],
     })
@@ -213,7 +237,7 @@ export default function ProfileSettings({ user }) {
 
   const fashionStyles = ["Casual", "Formal", "Desi", "Old Money", "Streetwear", "Minimalist", "Bohemian"]
   const aesthetics = ["Modern", "Vintage", "Classic", "Trendy", "Elegant", "Edgy", "Romantic"]
-  
+
   const sizes = ["XS", "S", "M", "L", "XL", "XXL"]
 
   const addAddress = () => {
@@ -274,280 +298,342 @@ export default function ProfileSettings({ user }) {
       )}
 
       <div className="bg-white rounded-lg shadow-sm">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Profile Settings</h2>
-            <p className="text-gray-600">Manage your personal information and preferences</p>
-          </div>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center gap-2 font-medium"
-            >
-              <Edit className="w-4 h-4" />
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex gap-2">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Profile Settings</h2>
+              <p className="text-gray-600">Manage your personal information and preferences</p>
+            </div>
+            {!isEditing ? (
               <button
-                onClick={handleSave}
-                disabled={saveLoading}
-                className={`bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium ${saveLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}
+                onClick={() => setIsEditing(true)}
+                className="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-500 transition-colors flex items-center gap-2 font-medium"
               >
-                <Save className="w-4 h-4" />
-                {saveLoading ? 'Saving...' : 'Save'}
+                <Edit className="w-4 h-4" />
+                Edit Profile
               </button>
-              <button
-                onClick={handleCancel}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Profile Content */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                />
-              ) : (
-                <div className="flex items-center gap-2 text-gray-900">
-                  <User className="w-4 h-4 text-gray-400" />
-                  {formData.name || "Not provided"}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              {isEditing ? (
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                />
-              ) : (
-                <div className="flex items-center gap-2 text-gray-900">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  {formData.email || "Not provided"}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-              {isEditing ? (
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                />
-              ) : (
-                <div className="flex items-center gap-2 text-gray-900">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  {formData.phone || "Not provided"}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                />
-              ) : (
-                <div className="flex items-center gap-2 text-gray-900">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  {formData.dateOfBirth || "Not provided"}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-              {isEditing ? (
-                <select
-                  value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saveLoading}
+                  className={`bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium ${saveLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'}`}
                 >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-900">
-                  <User className="w-4 h-4 text-gray-400" />
-                  {formData.gender || "Not provided"}
-                </div>
-              )}
-            </div>
+                  <Save className="w-4 h-4" />
+                  {saveLoading ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Fashion Preferences */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Fashion Preferences</h3>
+        {/* Profile Content */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Style Preferences</label>
-              {isEditing ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {[...fashionStyles, ...aesthetics].map((opt) => {
-                    const key = opt.toLowerCase()
-                    return (
-                      <label key={key} className="flex items-center gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <User className="w-4 h-4 text-gray-400" />
+                    {formData.name || "Not provided"}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                {isEditing ? (
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    {formData.email || "Not provided"}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    {formData.phone || "Not provided"}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                {isEditing ? (
+                  <input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {formData.dateOfBirth || "Not provided"}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                {isEditing ? (
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <User className="w-4 h-4 text-gray-400" />
+                    {formData.gender || "Not provided"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fashion Preferences */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fashion Preferences</h3>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Style Preferences</label>
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[...fashionStyles, ...aesthetics].map((opt) => {
+                        const key = opt.toLowerCase()
+                        return (
+                          <label key={key} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={(formData.stylePreferences || []).includes(key)}
+                              onChange={(e) => {
+                                const cur = new Set(formData.stylePreferences || [])
+                                if (e.target.checked) cur.add(key)
+                                else cur.delete(key)
+                                setFormData({ ...formData, stylePreferences: Array.from(cur) })
+                              }}
+                            />
+                            <span className="text-sm capitalize">{opt}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+
+                    {/* Custom Styles Input */}
+                    <div className="border-t pt-2">
+                      <label className="block text-xs font-medium text-gray-500 mb-2">Custom Styles</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {(formData.stylePreferences || []).filter(sp =>
+                          ![...fashionStyles, ...aesthetics].map(s => s.toLowerCase()).includes(sp.toLowerCase())
+                        ).map((customSp) => (
+                          <span key={customSp} className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                            <span className="capitalize">{customSp}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newPrefs = (formData.stylePreferences || []).filter(p => p !== customSp);
+                                setFormData({ ...formData, stylePreferences: newPrefs });
+                              }}
+                              className="text-yellow-600 hover:text-yellow-900 ml-1 font-bold focus:outline-none"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newStyle}
+                          onChange={(e) => setNewStyle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (newStyle.trim()) {
+                                const val = newStyle.trim().toLowerCase();
+                                if (!(formData.stylePreferences || []).includes(val)) {
+                                  setFormData({ ...formData, stylePreferences: [...(formData.stylePreferences || []), val] });
+                                }
+                                setNewStyle("");
+                              }
+                            }
+                          }}
+                          placeholder="Add custom style (e.g. Goth, Y2K)"
+                          className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newStyle.trim()) {
+                              const val = newStyle.trim().toLowerCase();
+                              if (!(formData.stylePreferences || []).includes(val)) {
+                                setFormData({ ...formData, stylePreferences: [...(formData.stylePreferences || []), val] });
+                              }
+                              setNewStyle("");
+                            }
+                          }}
+                          className="px-3 py-1 bg-yellow-400 text-black text-sm rounded hover:bg-yellow-500 active:bg-yellow-600 font-medium"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.stylePreferences || []).length > 0 ? (
+                      formData.stylePreferences.map((sp) => (
+                        <span key={sp} className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm capitalize">{sp}</span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500">Not provided</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Newsletter</label>
+                {isEditing ? (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.newsletterOptIn}
+                      onChange={(e) => setFormData({ ...formData, newsletterOptIn: e.target.checked })}
+                    />
+                    <span className="text-sm">Receive promotional emails and updates</span>
+                  </label>
+                ) : (
+                  <div className="text-gray-900">{formData.newsletterOptIn ? "Subscribed" : "Not subscribed"}</div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Sizes</label>
+                {isEditing ? (
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((s) => (
+                      <label key={s} className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={(formData.stylePreferences || []).includes(key)}
+                          checked={(formData.size || []).includes(s)}
                           onChange={(e) => {
-                            const cur = new Set(formData.stylePreferences || [])
-                            if (e.target.checked) cur.add(key)
-                            else cur.delete(key)
-                            setFormData({ ...formData, stylePreferences: Array.from(cur) })
+                            const cur = new Set(formData.size || [])
+                            if (e.target.checked) cur.add(s)
+                            else cur.delete(s)
+                            setFormData({ ...formData, size: Array.from(cur) })
                           }}
                         />
-                        <span className="text-sm capitalize">{opt}</span>
+                        <span className="text-sm">{s}</span>
                       </label>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {(formData.stylePreferences || []).length > 0 ? (
-                    formData.stylePreferences.map((sp) => (
-                      <span key={sp} className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm capitalize">{sp}</span>
-                    ))
-                  ) : (
-                    <span className="text-gray-500">Not provided</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Newsletter</label>
-              {isEditing ? (
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.newsletterOptIn}
-                    onChange={(e) => setFormData({ ...formData, newsletterOptIn: e.target.checked })}
-                  />
-                  <span className="text-sm">Receive promotional emails and updates</span>
-                </label>
-              ) : (
-                <div className="text-gray-900">{formData.newsletterOptIn ? "Subscribed" : "Not subscribed"}</div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Sizes</label>
-              {isEditing ? (
-                <div className="flex flex-wrap gap-2">
-                  {sizes.map((s) => (
-                    <label key={s} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={(formData.size || []).includes(s)}
-                        onChange={(e) => {
-                          const cur = new Set(formData.size || [])
-                          if (e.target.checked) cur.add(s)
-                          else cur.delete(s)
-                          setFormData({ ...formData, size: Array.from(cur) })
-                        }}
-                      />
-                      <span className="text-sm">{s}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-900">{(formData.size || []).join(", ") || "Not provided"}</div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-900">{(formData.size || []).join(", ") || "Not provided"}</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        {/* Addresses */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Addresses</h3>
-          {isEditing ? (
-            <div className="space-y-4">
-              {(formData.addresses || []).map((addr, idx) => (
-                <div key={idx} className="bg-white border p-4 rounded">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <input placeholder="Label (Home, Work)" value={addr.label} onChange={(e) => updateAddress(idx, 'label', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Full name" value={addr.fullName} onChange={(e) => updateAddress(idx, 'fullName', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Phone" value={addr.phone} onChange={(e) => updateAddress(idx, 'phone', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Street" value={addr.street} onChange={(e) => updateAddress(idx, 'street', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Apartment" value={addr.apartment} onChange={(e) => updateAddress(idx, 'apartment', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="City" value={addr.city} onChange={(e) => updateAddress(idx, 'city', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="State" value={addr.state} onChange={(e) => updateAddress(idx, 'state', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Postal Code" value={addr.postalCode} onChange={(e) => updateAddress(idx, 'postalCode', e.target.value)} className="border px-2 py-1 rounded" />
-                    <input placeholder="Country" value={addr.country} onChange={(e) => updateAddress(idx, 'country', e.target.value)} className="border px-2 py-1 rounded" />
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={!!addr.isDefault} onChange={(e) => {
-                        // set this address as default
-                        setFormData(prev => ({
-                          ...prev,
-                          addresses: prev.addresses.map((a, i) => ({ ...a, isDefault: i === idx }))
-                        }))
-                      }} />
-                      <span className="text-sm">Set as default</span>
-                    </label>
+          {/* Addresses */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Addresses</h3>
+            {isEditing ? (
+              <div className="space-y-4">
+                {(formData.addresses || []).map((addr, idx) => (
+                  <div key={idx} className="bg-white border p-4 rounded">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <input placeholder="Label (Home, Work)" value={addr.label} onChange={(e) => updateAddress(idx, 'label', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Full name" value={addr.fullName} onChange={(e) => updateAddress(idx, 'fullName', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Phone" value={addr.phone} onChange={(e) => updateAddress(idx, 'phone', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Street" value={addr.street} onChange={(e) => updateAddress(idx, 'street', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Apartment" value={addr.apartment} onChange={(e) => updateAddress(idx, 'apartment', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="City" value={addr.city} onChange={(e) => updateAddress(idx, 'city', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="State" value={addr.state} onChange={(e) => updateAddress(idx, 'state', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Postal Code" value={addr.postalCode} onChange={(e) => updateAddress(idx, 'postalCode', e.target.value)} className="border px-2 py-1 rounded" />
+                      <input placeholder="Country" value={addr.country} onChange={(e) => updateAddress(idx, 'country', e.target.value)} className="border px-2 py-1 rounded" />
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={!!addr.isDefault} onChange={(e) => {
+                          // set this address as default
+                          setFormData(prev => ({
+                            ...prev,
+                            addresses: prev.addresses.map((a, i) => ({ ...a, isDefault: i === idx }))
+                          }))
+                        }} />
+                        <span className="text-sm">Set as default</span>
+                      </label>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button type="button" onClick={() => removeAddress(idx)} className="text-sm text-red-600">Remove</button>
+                    </div>
                   </div>
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={() => removeAddress(idx)} className="text-sm text-red-600">Remove</button>
-                  </div>
-                </div>
-              ))}
-              <button type="button" onClick={addAddress} className="mt-2 px-3 py-1 bg-gray-100 rounded">Add address</button>
-            </div>
-          ) : (
-            <div>
-              {(formData.addresses || []).length > 0 ? (
-                (formData.addresses || []).map((addr, idx) => (
-                  <div key={idx} className="p-3 border rounded mb-2">
-                    <div className="font-medium">{addr.label || "Address"}</div>
-                    <div className="text-sm text-gray-600">{addr.fullName} • {addr.phone}</div>
-                    <div className="text-sm text-gray-600">{addr.street} {addr.apartment}</div>
-                    <div className="text-sm text-gray-600">{addr.city}, {addr.state} {addr.postalCode}</div>
-                    <div className="text-sm text-gray-600">{addr.country}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-gray-500">No addresses saved</div>
-              )}
-            </div>
-          )}
-        </div>
+                ))}
+                <button type="button" onClick={addAddress} className="mt-2 px-3 py-1 bg-gray-100 rounded">Add address</button>
+              </div>
+            ) : (
+              <div>
+                {(formData.addresses || []).length > 0 ? (
+                  (formData.addresses || []).map((addr, idx) => (
+                    <div key={idx} className="p-3 border rounded mb-2">
+                      <div className="font-medium">{addr.label || "Address"}</div>
+                      <div className="text-sm text-gray-600">{addr.fullName} • {addr.phone}</div>
+                      <div className="text-sm text-gray-600">{addr.street} {addr.apartment}</div>
+                      <div className="text-sm text-gray-600">{addr.city}, {addr.state} {addr.postalCode}</div>
+                      <div className="text-sm text-gray-600">{addr.country}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500">No addresses saved</div>
+                )}
+              </div>
+            )}
+          </div>
 
-        {saveFeedback && <div className="mt-4 text-sm text-gray-700">{saveFeedback}</div>}
+          {saveFeedback && <div className="mt-4 text-sm text-gray-700">{saveFeedback}</div>}
+        </div>
       </div>
-    </div>
     </>
   )
 }

@@ -110,10 +110,39 @@ export default function CustomerDashboard() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-white shadow-sm border-b h-16 w-full animate-pulse"></header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 animate-pulse">
+          <div className="mb-8">
+            <div className="bg-white rounded-lg p-6 mb-6 border border-gray-100 h-24"></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white rounded-lg p-4 h-20 border border-gray-100">
+                  <div className="h-4 w-1/2 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="lg:w-64">
+              <div className="bg-white rounded-lg p-4 space-y-3">
+                {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                  <div key={i} className="h-10 w-full bg-gray-200 rounded-lg"></div>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="bg-white rounded-lg p-6 min-h-[400px]">
+                <div className="h-6 w-1/3 bg-gray-200 rounded mb-6"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 w-full bg-gray-200 rounded-lg"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

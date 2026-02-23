@@ -71,7 +71,7 @@ export default function SwipeBucketModal({ isOpen, onClose, bucketItems, onAddTo
                     <p className="text-sm text-gray-600">{product.brand}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="font-bold text-black">PKR {product.price.toLocaleString()}</span>
-                      {product.originalPrice && (
+                      {product.originalPrice > product.price && (
                         <span className="text-sm text-gray-500 line-through">
                           PKR {product.originalPrice.toLocaleString()}
                         </span>
@@ -181,9 +181,8 @@ export default function SwipeBucketModal({ isOpen, onClose, bucketItems, onAddTo
                   {[...Array(5)].map((_, i) => (
                     <span
                       key={i}
-                      className={`text-sm ${
-                        i < Math.floor(selectedProduct.rating) ? "text-yellow-400" : "text-gray-300"
-                      }`}
+                      className={`text-sm ${i < Math.floor(selectedProduct.rating) ? "text-yellow-400" : "text-gray-300"
+                        }`}
                     >
                       ★
                     </span>
@@ -199,8 +198,7 @@ export default function SwipeBucketModal({ isOpen, onClose, bucketItems, onAddTo
                   {selectedProduct.colors.map((color) => (
                     <div
                       key={color}
-                      className={`w-8 h-8 rounded-full border-2 border-gray-300 ${
-                        color === "black"
+                      className={`w-8 h-8 rounded-full border-2 border-gray-300 ${color === "black"
                           ? "bg-black"
                           : color === "white"
                             ? "bg-white"
@@ -213,7 +211,7 @@ export default function SwipeBucketModal({ isOpen, onClose, bucketItems, onAddTo
                                   : color === "brown"
                                     ? "bg-amber-600"
                                     : "bg-gray-400"
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>

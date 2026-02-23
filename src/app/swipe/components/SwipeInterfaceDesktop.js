@@ -213,7 +213,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
                             <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{currentProduct.title}</h3>
                             <div className="text-right">
                                 <p className="font-bold text-lg text-black">PKR {currentProduct.price.toLocaleString()}</p>
-                                {currentProduct.originalPrice && (
+                                {currentProduct.originalPrice > currentProduct.price && (
                                     <p className="text-sm text-gray-500 line-through">
                                         PKR {currentProduct.originalPrice.toLocaleString()}
                                     </p>

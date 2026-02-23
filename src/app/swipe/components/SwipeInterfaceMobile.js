@@ -321,7 +321,7 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                         </div>
                         <div className="text-right">
                             <span className="block text-yellow-400 font-bold text-xl whitespace-nowrap drop-shadow-md">PKR {currentProduct.price.toLocaleString()}</span>
-                            {currentProduct.originalPrice && (
+                            {currentProduct.originalPrice > currentProduct.price && (
                                 <span className="block text-white/70 text-sm line-through mt-0.5 drop-shadow-sm">PKR {currentProduct.originalPrice.toLocaleString()}</span>
                             )}
                         </div>

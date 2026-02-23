@@ -201,8 +201,28 @@ export default function VirtualTryOnPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-yellow-50 flex flex-col font-sans">
+                <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b h-16 w-full animate-pulse"></header>
+                <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse flex-1">
+                    <div className="bg-white rounded-2xl shadow-sm p-6 mb-8 flex items-center gap-6 border border-purple-100">
+                        <div className="w-24 h-24 bg-purple-100 rounded-xl"></div>
+                        <div className="space-y-3 flex-1 max-w-sm">
+                            <div className="h-6 w-3/4 bg-purple-100 rounded"></div>
+                            <div className="h-4 w-1/2 bg-purple-100 rounded"></div>
+                            <div className="h-5 w-1/3 bg-purple-100 rounded pt-2"></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-white rounded-2xl shadow-sm p-8 border border-purple-100 h-96">
+                            <div className="h-6 w-1/3 bg-purple-100 rounded mb-6"></div>
+                            <div className="h-full w-full bg-purple-50 rounded-xl"></div>
+                        </div>
+                        <div className="bg-white rounded-2xl shadow-sm p-8 border border-purple-100 h-96">
+                            <div className="h-6 w-1/3 bg-purple-100 rounded mb-6"></div>
+                            <div className="h-full w-full bg-purple-50 rounded-xl"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         )
     }

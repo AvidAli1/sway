@@ -219,7 +219,7 @@ export default function Wishlist({ user }) {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <span className="text-lg font-bold text-gray-900">PKR {item.price.toLocaleString()}</span>
-                      {item.originalPrice && (
+                      {item.originalPrice > item.price && (
                         <span className="text-sm text-gray-500 line-through ml-2">
                           PKR {item.originalPrice.toLocaleString()}
                         </span>

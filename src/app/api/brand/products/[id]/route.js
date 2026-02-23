@@ -38,12 +38,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     }).populate('brand', 'name businessEmail');
 
     if (!product) {
@@ -100,12 +100,12 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {
@@ -117,23 +117,23 @@ export async function PUT(request, { params }) {
 
     // Parse form data
     const formData = await request.formData();
-    
+
     // Extract product data
     const updateData = {};
-    
+
     // Handle price calculation
     const originalPrice = formData.get('originalPrice');
     const discountPercentage = formData.get('discount');
-    
+
     if (originalPrice !== null || discountPercentage !== null) {
       const currentOriginalPrice = originalPrice !== null ? parseFloat(originalPrice) : product.originalPrice;
       const currentDiscount = discountPercentage !== null ? parseFloat(discountPercentage) : product.discount;
-      
+
       // Calculate new price based on original price and discount
-      const calculatedPrice = currentOriginalPrice > 0 && currentDiscount > 0 
+      const calculatedPrice = currentOriginalPrice > 0 && currentDiscount > 0
         ? currentOriginalPrice - (currentOriginalPrice * currentDiscount / 100)
         : currentOriginalPrice;
-      
+
       updateData.originalPrice = currentOriginalPrice;
       updateData.discount = currentDiscount;
       updateData.price = calculatedPrice;
@@ -141,9 +141,9 @@ export async function PUT(request, { params }) {
 
     // Update basic fields (excluding price-related fields as they're handled above)
     const fieldsToUpdate = [
-      'name', 'description', 'category', 'subCategory', 'currency', 
-      'stock', 'inStock', 'gender', 'material', 'fitType', 'occasion', 
-      'careInstructions', 'isFeatured', 'status'
+      'name', 'description', 'category', 'subCategory', 'currency',
+      'stock', 'inStock', 'gender', 'material', 'fitType', 'occasion',
+      'careInstructions', 'isFeatured', 'status', 'season', 'sku'
     ];
 
     fieldsToUpdate.forEach(field => {
@@ -194,7 +194,7 @@ export async function PUT(request, { params }) {
 
   } catch (error) {
     console.error('Error updating product:', error);
-    
+
     // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
@@ -244,12 +244,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find and delete the product
-    const product = await Product.findOneAndDelete({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOneAndDelete({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {

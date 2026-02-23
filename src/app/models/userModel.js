@@ -47,7 +47,15 @@ const UserSchema = new mongoose.Schema(
     },
     avatar: {
       type: String, // URL
-    }
+    },
+    stylePreferences: {
+      type: [String], // e.g., ["streetwear", "minimalist"]
+      default: [],
+    },
+    styleEmbedding: {
+      type: [Number],
+      default: [],
+    },
   },
   { timestamps: true }
 )

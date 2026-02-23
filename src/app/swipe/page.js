@@ -71,7 +71,17 @@ export default function SwipePage() {
       params.append('minPrice', filters.priceRange[0]);
       params.append('maxPrice', filters.priceRange[1]);
 
-      const res = await fetch(`/api/customer/products?${params.toString()}`);
+      let headers = {};
+      try {
+        const token = localStorage.getItem("authToken");
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.error("Failed to retrieve token:", e);
+      }
+
+      const res = await fetch(`/api/customer/products?${params.toString()}`, { headers, credentials: 'include' });
       const data = await res.json();
 
       if (data.success) {
@@ -323,12 +333,17 @@ export default function SwipePage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-gray-800 transition-colors text-xs sm:text-sm font-medium"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-3 py-1.5 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-3 py-1.5 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -351,8 +366,16 @@ export default function SwipePage() {
 
         <div className="flex-1 min-h-0 relative w-full flex justify-center">
           {loading && products.length === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+            <div className="flex items-center justify-center h-[calc(100vh-200px)] w-full max-w-sm mx-auto px-4 mt-6">
+              <div className="animate-pulse bg-white rounded-[2rem] shadow-xl border border-gray-100 w-full h-[85vh] md:h-[600px] relative overflow-hidden flex flex-col">
+                <div className="flex-1 bg-gray-200"></div>
+                <div className="w-full absolute bottom-0 bg-white/90 backdrop-blur-sm p-6 pt-16 space-y-3">
+                  <div className="h-6 w-1/4 bg-gray-300 rounded-full mb-2"></div>
+                  <div className="h-5 w-3/4 bg-gray-200 rounded"></div>
+                  <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
+                </div>
+                <div className="absolute bottom-[100px] right-6 h-12 w-12 bg-white rounded-full shadow-lg z-10"></div>
+              </div>
             </div>
           ) : products.length > 0 ? (
             <SwipeInterface

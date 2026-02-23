@@ -4,6 +4,7 @@ import Product from '@/app/models/productModel';
 import Brand from '@/app/models/brandModel';
 import { uploadProductImages } from '@/utils/AWS';
 import { authMiddleware } from '@/utils/authMiddleware';
+import { getImageEmbeddingFromBuffer, analyzeImageFromBuffer } from '@/utils/recommendationService';
 
 // GET /api/brand/products - Get all products for a brand
 export async function GET(request) {
@@ -179,6 +180,7 @@ export async function POST(request) {
       fitType: formData.get('fitType'),
       occasion: formData.get('occasion'),
       careInstructions: formData.get('careInstructions'),
+      season: formData.get('season') || 'All Seasons',
       isFeatured: formData.get('isFeatured') === 'true',
       status: formData.get('status') || 'active',
       brand: brand._id
@@ -223,7 +225,8 @@ export async function POST(request) {
     const imageFiles = formData.getAll('images');
 
     // Process thumbnail and product images. Skip problematic files but record their names.
-    const failedImages = []
+    const failedImages = [];
+    let extractedFeatures = null;
 
     // Process thumbnail
     if (thumbnailFiles && thumbnailFiles.length > 0 && thumbnailFiles[0].size > 0) {
@@ -239,7 +242,36 @@ export async function POST(request) {
       } catch (err) {
         console.error('Thumbnail upload failed, skipping thumbnail:', thumbnailFile.name, err);
         failedImages.push(thumbnailFile.name || 'thumbnail');
-        productData.thumbnail = null;
+      }
+
+      // Generate embedding for recommendation system (using thumbnail)
+      try {
+        console.log('Generating product embedding from thumbnail...');
+        // reuse the buffer if possible or create new one. thumbnailFile is available here.
+        const buffer = Buffer.from(await thumbnailFile.arrayBuffer());
+        const embedding = await getImageEmbeddingFromBuffer(buffer, thumbnailFile.name);
+        if (embedding) {
+          console.log('Embedding generated successfully');
+          productData.embedding = embedding;
+        } else {
+          console.warn('Failed to generate embedding: Service returned null');
+        }
+
+        // Also extract and log readable features
+        console.log('Extracting descriptive features via CLIP zero-shot...');
+        extractedFeatures = await analyzeImageFromBuffer(buffer, thumbnailFile.name);
+        if (extractedFeatures && extractedFeatures.length > 0) {
+          console.log('--- CLIP EXTRACTED FEATURES ---');
+          extractedFeatures.forEach(f => {
+            console.log(`- ${f.feature} (confidence: ${(f.score * 100).toFixed(1)}%)`);
+          });
+          console.log('-------------------------------');
+        } else {
+          console.log('No strong features extracted by CLIP zero-shot.');
+        }
+      } catch (embErr) {
+        console.error('Error generating embedding:', embErr);
+        // We don't fail the upload if embedding fails, just log it
       }
     }
 
@@ -320,7 +352,8 @@ export async function POST(request) {
     const responsePayload = {
       success: true,
       message: 'Product created successfully',
-      product
+      product,
+      extractedFeatures
     };
 
     if (failedImages.length > 0) {

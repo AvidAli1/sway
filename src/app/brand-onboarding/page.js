@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { User, Mail, Lock, Phone, MapPin, Building2, FileText } from 'lucide-react';
 
 export default function BrandOnboarding() {
@@ -444,9 +445,8 @@ export default function BrandOnboarding() {
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${
-                  submitting ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                className={`w-full bg-yellow-400 text-black py-3 px-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors ${submitting ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
               >
                 {submitting ? 'Completing...' : 'Complete Onboarding'}
               </button>
@@ -454,7 +454,7 @@ export default function BrandOnboarding() {
 
             {/* Terms */}
             <p className="text-xs text-gray-600 text-center mt-6">
-              By completing onboarding, you agree to our Terms of Service and Privacy Policy
+              By completing onboarding, you agree to our <Link href="/terms" className="text-yellow-600 hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-yellow-600 hover:underline">Privacy Policy</Link>
             </p>
           </div>
         </div>

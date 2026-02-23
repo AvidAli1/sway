@@ -108,7 +108,7 @@ export default function CheckoutPage() {
                     }
                   })
                   setCartItems(transformed)
-                  
+
                   // Pre-fill form with user data if available
                   if (user) {
                     setFormData((prev) => ({
@@ -350,10 +350,38 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading checkout...</p>
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200 h-16 w-full"></header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
+          <div className="mb-6">
+            <div className="h-8 w-48 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded"></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white rounded-lg p-6 space-y-4">
+                  <div className="h-6 w-1/4 bg-gray-200 rounded mb-4"></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="h-10 w-full bg-gray-200 rounded"></div>
+                    <div className="h-10 w-full bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="h-10 w-full bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
+                <div className="h-6 w-1/2 bg-gray-200 rounded mb-6"></div>
+                <div className="space-y-3">
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                </div>
+                <div className="h-12 w-full bg-gray-200 rounded-lg mt-6"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -415,12 +443,17 @@ export default function CheckoutPage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-4 py-1.5 text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -462,11 +495,10 @@ export default function CheckoutPage() {
                   {savedAddresses.map((address) => (
                     <label
                       key={address._id}
-                      className={`block p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedAddressId === address._id
-                          ? "border-yellow-400 bg-yellow-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`block p-4 border-2 rounded-lg cursor-pointer transition-colors ${selectedAddressId === address._id
+                        ? "border-yellow-400 bg-yellow-50"
+                        : "border-gray-200 hover:border-gray-300"
+                        }`}
                     >
                       <input
                         type="radio"

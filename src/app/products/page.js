@@ -19,10 +19,12 @@ import {
   Loader2,
 } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import ToastNotification from "../components/ToastNotification"
 import { useCart } from "../context/CartContext"
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams()
   const { cartCount, updateCartCount } = useCart()
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
@@ -33,13 +35,13 @@ export default function ProductsPage() {
   const [toastType, setToastType] = useState("info")
   const [viewMode, setViewMode] = useState("grid") // 'grid' or 'list'
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("newest")
+  const [sortBy, setSortBy] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   const [wishlist, setWishlist] = useState(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
-  const [productsPerPage] = useState(12)
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1)
+  const [productsPerPage] = useState(50)
   const [categoriesList, setCategoriesList] = useState([])
   const [subCategoriesList, setSubCategoriesList] = useState([])
   const [brandsList, setBrandsList] = useState([])
@@ -48,15 +50,35 @@ export default function ProductsPage() {
   const observerTarget = useRef(null)
 
   const [filters, setFilters] = useState({
-    brands: [],
-    categories: [],
+    brands: searchParams.get('brand') ? searchParams.get('brand').split(',') : [],
+    categories: searchParams.get('subCategory') ? searchParams.get('subCategory').split(',') : [],
     subCategories: [], // Added subCategories
-    priceRange: [0, 15000],
-    sizes: [],
-    colors: [],
-    rating: 0,
-    inStock: false,
+    priceRange: [
+      searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')) : 0,
+      searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')) : 15000
+    ],
+    sizes: searchParams.get('sizes') ? searchParams.get('sizes').split(',') : [],
+    colors: searchParams.get('colors') ? searchParams.get('colors').split(',') : [],
+    rating: searchParams.get('rating') ? parseInt(searchParams.get('rating')) : 0,
+    inStock: searchParams.get('inStock') === 'true',
   })
+
+  useEffect(() => {
+    // Initial sync for search/sort
+    if (searchParams.get('search')) setSearchQuery(searchParams.get('search'))
+    if (searchParams.get('featured') === 'true') {
+      setSortBy('featured')
+    } else if (searchParams.get('sortBy')) {
+      const sort = searchParams.get('sortBy')
+      const order = searchParams.get('sortOrder')
+      if (sort === 'price' && order === 'asc') setSortBy('price-low')
+      else if (sort === 'price' && order === 'desc') setSortBy('price-high')
+      else if (sort === 'createdAt') setSortBy('newest')
+      else if (sort === 'ratings') setSortBy('rating')
+      else if (sort === 'numReviews') setSortBy('popular')
+      else if (sort === 'recommended') setSortBy('recommended')
+    }
+  }, [searchParams])
 
   // Auth & Wishlist Check
   useEffect(() => {
@@ -98,26 +120,27 @@ export default function ProductsPage() {
     setProductsError(null)
     try {
       const p = new URLSearchParams()
-      // special-case: when user selects "featured" we want a short featured-only request
+
+      p.append('page', String(page))
+      // special-case: when user selects "featured" we might want fewer products or we just keep it consistent.
+      // Let's keep it consistent or use productsPerPage.
+      p.append('limit', String(sortBy === 'featured' ? 8 : productsPerPage))
+
+      if (searchQuery) p.append('search', searchQuery)
+      if (filters.categories && filters.categories.length > 0) p.append('subCategory', filters.categories.join(','))
+      if (filters.brands && filters.brands.length > 0) p.append('brand', filters.brands.join(','))
+      if (filters.sizes && filters.sizes.length > 0) p.append('sizes', filters.sizes.join(','))
+      if (filters.colors && filters.colors.length > 0) p.append('colors', filters.colors.join(','))
+      if (filters.priceRange) {
+        p.append('minPrice', String(filters.priceRange[0] || 0))
+        p.append('maxPrice', String(filters.priceRange[1] || 0))
+      }
+      if (filters.rating) p.append('rating', String(filters.rating))
+      if (filters.inStock) p.append('inStock', 'true')
+
       if (sortBy === 'featured') {
         p.append('featured', 'true')
-        p.append('limit', String(8))
       } else {
-        p.append('page', String(page))
-        p.append('limit', String(productsPerPage))
-        if (searchQuery) p.append('search', searchQuery)
-        // Use 'categories' filter state to filter by subCategory as per user request
-        if (filters.categories && filters.categories.length > 0) p.append('subCategory', filters.categories.join(','))
-        if (filters.brands && filters.brands.length > 0) p.append('brand', filters.brands.join(','))
-        if (filters.sizes && filters.sizes.length > 0) p.append('sizes', filters.sizes.join(','))
-        if (filters.colors && filters.colors.length > 0) p.append('colors', filters.colors.join(','))
-        if (filters.priceRange) {
-          p.append('minPrice', String(filters.priceRange[0] || 0))
-          p.append('maxPrice', String(filters.priceRange[1] || 0))
-        }
-        if (filters.rating) p.append('rating', String(filters.rating))
-        if (filters.inStock) p.append('inStock', 'true')
-
         // map UI sort option to backend sortBy + sortOrder
         const mapSort = (s) => {
           switch (s) {
@@ -131,8 +154,10 @@ export default function ProductsPage() {
               return { sortBy: 'createdAt', sortOrder: 'desc' }
             case 'popular':
               return { sortBy: 'numReviews', sortOrder: 'desc' }
+            case 'recommended':
+              return { sortBy: 'recommended', sortOrder: 'desc' }
             default:
-              return { sortBy: 'featured', sortOrder: 'desc' }
+              return null
           }
         }
         const sortParams = mapSort(sortBy)
@@ -151,10 +176,18 @@ export default function ProductsPage() {
 
       const url = `/api/customer/products?${paramsString}`
 
-      // Prevent duplicate fetches if strictly not needed (optional, effectively handled by deps)
       // but for infinite scroll, page changes, so params change.
+      let headers = {};
+      try {
+        const token = localStorage.getItem("authToken");
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.error("Failed to retrieve token:", e);
+      }
 
-      const res = await fetch(url)
+      const res = await fetch(url, { headers, credentials: 'include' })
       if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`)
       const data = await res.json()
 
@@ -228,6 +261,7 @@ export default function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1)
     setProductsLoading(true) // Force loading state immediately
+    setAllProducts([]) // Clear existing products to show the skeleton loader
     // Optional: Clear products to avoid mixing if we want a clean slate visual, 
     // but keeping them is usually better for UX until new ones arrive.
     // However, if the issue is "No products found" flashing, we want to ensure loading is true.
@@ -281,10 +315,10 @@ export default function ProductsPage() {
       }
       if (filters.rating) params.append('rating', String(filters.rating))
       if (filters.inStock) params.append('inStock', 'true')
-      // special-case featured listing in URL: show featured=true&limit=8
+      // special-case featured listing in URL
       if (sortBy === 'featured') {
         params.append('featured', 'true')
-        params.append('limit', String(8))
+        params.set('limit', String(8))
       } else {
         // map UI sort option to backend sortBy + sortOrder for URL
         const mapSort = (s) => {
@@ -299,6 +333,8 @@ export default function ProductsPage() {
               return { sortBy: 'createdAt', sortOrder: 'desc' }
             case 'popular':
               return { sortBy: 'numReviews', sortOrder: 'desc' }
+            case 'recommended':
+              return { sortBy: 'recommended', sortOrder: 'desc' }
             default:
               return { sortBy: 'featured', sortOrder: 'desc' }
           }
@@ -603,12 +639,17 @@ export default function ProductsPage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-4 py-1.5 text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -728,8 +769,20 @@ export default function ProductsPage() {
                   )}
                 </>
               ) : productsLoading ? (
-                <div className="flex justify-center items-center py-20">
-                  <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="animate-pulse bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
+                      <div className="h-72 bg-gray-200"></div>
+                      <div className="p-5 flex flex-col flex-1 relative">
+                        <div className="h-5 w-3/4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-4 w-1/2 bg-gray-200 rounded mb-4"></div>
+                        <div className="mt-auto flex justify-between items-end pt-4">
+                          <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                          <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-16">
@@ -904,31 +957,35 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
       {/* Colors */}
       <div>
         <h3 className="font-semibold mb-3">Colors</h3>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="flex flex-wrap gap-3">
           {(() => {
             const visibleColors = colors;
             if (visibleColors.length === 0) {
-              return <p className="text-xs text-gray-500 col-span-4 text-center py-2">No colors found</p>;
+              return <p className="text-xs text-gray-500 w-full text-center py-2">No colors found</p>;
             }
             return visibleColors.map((color) => {
               // Handle basic color mapping for display
               let bgStyle = { backgroundColor: color }
               if (color.toLowerCase() === 'multicolor') bgStyle = { background: 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)' }
 
+              const isSelected = filters.colors.includes(color)
+
               return (
                 <label
                   key={color}
-                  className={`flex flex-col items-center gap-1 p-2 border rounded-lg cursor-pointer transition-colors ${filters.colors.includes(color) ? "border-yellow-400 bg-yellow-50" : "border-gray-200"
-                    }`}
+                  className="cursor-pointer"
+                  title={color}
                 >
                   <input
                     type="checkbox"
-                    checked={filters.colors.includes(color)}
+                    checked={isSelected}
                     onChange={() => onFilterChange("colors", color)}
                     className="sr-only"
                   />
-                  <div className="w-6 h-6 rounded-full border border-gray-300 shadow-sm" style={bgStyle} />
-                  <span className="text-xs capitalize truncate w-full text-center" title={color}>{color}</span>
+                  <div
+                    className={`w-8 h-8 rounded-full border-2 border-white ring-1 transition-all ${isSelected ? 'ring-2 ring-yellow-400 outline outline-2 outline-white scale-110 shadow-sm' : 'ring-gray-200 hover:ring-gray-400'}`}
+                    style={bgStyle}
+                  />
                 </label>
               )
             })
@@ -943,10 +1000,10 @@ function FilterContent({ filters, brands, categories, colors, onFilterChange, so
           {[4, 3, 2, 1].map((rating) => (
             <label key={rating} className="flex items-center">
               <input
-                type="radio"
+                type="checkbox"
                 name="rating"
                 checked={filters.rating === rating}
-                onChange={() => onFilterChange("rating", rating)}
+                onChange={() => onFilterChange("rating", filters.rating === rating ? 0 : rating)}
                 className="mr-3"
               />
               <div className="flex items-center gap-1">
@@ -998,7 +1055,7 @@ function ProductCard({ product, viewMode, isWishlisted, onAddToCart, onToggleWis
               <div className="text-right">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg font-bold">PKR {product.price.toLocaleString()}</span>
-                  {product.originalPrice && (
+                  {product.originalPrice > product.price && (
                     <span className="text-sm text-gray-500 line-through">
                       PKR {product.originalPrice.toLocaleString()}
                     </span>
@@ -1054,7 +1111,7 @@ function ProductCard({ product, viewMode, isWishlisted, onAddToCart, onToggleWis
             {!product.inStock && (
               <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">Out of Stock</span>
             )}
-            {product.originalPrice && (
+            {product.originalPrice > product.price && (
               <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
                 {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
               </span>
@@ -1090,7 +1147,7 @@ function ProductCard({ product, viewMode, isWishlisted, onAddToCart, onToggleWis
 
           <div className="flex items-center gap-2 mb-3">
             <span className="text-lg font-bold text-gray-900">PKR {product.price.toLocaleString()}</span>
-            {product.originalPrice && (
+            {product.originalPrice > product.price && (
               <span className="text-sm text-gray-500 line-through">PKR {product.originalPrice.toLocaleString()}</span>
             )}
           </div>

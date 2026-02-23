@@ -38,12 +38,12 @@ export async function POST(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {
@@ -147,12 +147,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {
@@ -165,7 +165,7 @@ export async function DELETE(request, { params }) {
     // Get image indices to delete from query parameters
     const { searchParams } = new URL(request.url);
     const indicesParam = searchParams.get('indices');
-    
+
     if (!indicesParam) {
       return NextResponse.json(
         { error: 'Image indices are required' },
@@ -175,7 +175,7 @@ export async function DELETE(request, { params }) {
 
     // Parse indices (comma-separated)
     const indices = indicesParam.split(',').map(i => parseInt(i.trim())).filter(i => !isNaN(i));
-    
+
     if (indices.length === 0) {
       return NextResponse.json(
         { error: 'No valid indices provided' },
@@ -185,7 +185,7 @@ export async function DELETE(request, { params }) {
 
     // Validate indices
     const validIndices = indices.filter(index => index >= 0 && index < product.images.length);
-    
+
     if (validIndices.length === 0) {
       return NextResponse.json(
         { error: 'No valid image indices found' },
@@ -196,7 +196,7 @@ export async function DELETE(request, { params }) {
     // Remove images at specified indices (sort in descending order to avoid index shifting)
     const updatedImages = [...product.images];
     const sortedIndices = validIndices.sort((a, b) => b - a);
-    
+
     for (const index of sortedIndices) {
       updatedImages.splice(index, 1);
     }
@@ -257,12 +257,12 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {

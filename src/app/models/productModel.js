@@ -146,6 +146,11 @@ const productSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    season: {
+        type: String,
+        enum: ["Spring", "Summer", "Autumn", "Winter", "All Seasons"],
+        default: "All Seasons",
+    },
     ratings: {
         type: Number,
         default: 0,
@@ -167,7 +172,11 @@ const productSchema = new mongoose.Schema({
         enum: ["active", "inactive", "draft"],
         default: "active",
     },
-});
+    embedding: {
+        type: [Number],
+        index: true, // Optional: helpful, but vector search uses a separate index
+    },
+}, { timestamps: true });
 
 const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 

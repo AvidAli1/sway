@@ -18,6 +18,10 @@ export default function ProductsList() {
   const [productDetails, setProductDetails] = useState(null)
   const [isLoadingProduct, setIsLoadingProduct] = useState(false)
 
+  // Delete modal state
+  const [productToDelete, setProductToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   useEffect(() => {
     let mounted = true
     const fetchProducts = async () => {
@@ -168,6 +172,28 @@ export default function ProductsList() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!productToDelete) return;
+
+    setIsDeleting(true)
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+      const res = await fetch(`/api/brand/products/${productToDelete.id}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Failed to delete product')
+
+      setProducts(products.filter(p => p.id !== productToDelete.id))
+      setProductToDelete(null)
+    } catch (error) {
+      console.error(error)
+      alert("Failed to delete product")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (editingProduct) {
@@ -258,7 +284,7 @@ export default function ProductsList() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <span className="text-lg font-bold text-gray-900">PKR {product.price.toLocaleString()}</span>
-                      {product.originalPrice && (
+                      {product.originalPrice > product.price && (
                         <span className="text-sm text-gray-500 line-through ml-2">
                           PKR {product.originalPrice.toLocaleString()}
                         </span>
@@ -278,10 +304,13 @@ export default function ProductsList() {
                   </div>
 
                   <div className="flex gap-2">
-                    <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
+                    <Link
+                      href={`/productDetails/${product.id}`}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+                    >
                       <Eye className="w-4 h-4" />
                       View
-                    </button>
+                    </Link>
                     <button
                       onClick={() => handleEditClick(product)}
                       className="flex-1 bg-blue-100 text-blue-700 py-2 px-3 rounded text-sm hover:bg-blue-200 transition-colors flex items-center justify-center gap-1"
@@ -289,7 +318,10 @@ export default function ProductsList() {
                       <Edit className="w-4 h-4" />
                       Edit
                     </button>
-                    <button className="bg-red-100 text-red-700 py-2 px-3 rounded text-sm hover:bg-red-200 transition-colors flex items-center justify-center">
+                    <button
+                      onClick={() => setProductToDelete(product)}
+                      className="bg-red-100 text-red-700 py-2 px-3 rounded text-sm hover:bg-red-200 transition-colors flex items-center justify-center"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -316,6 +348,37 @@ export default function ProductsList() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Product</h3>
+            <p className="text-gray-500 mb-6 text-sm">
+              Are you sure you want to delete <span className="font-semibold text-gray-700">"{productToDelete.title}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setProductToDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center justify-center disabled:opacity-50 gap-2"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Product Modal */}
       {editingProduct && (
@@ -354,7 +417,10 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
     colors: [],
     tags: [],
     features: [],
+
     specifications: [],
+    season: '', // Added Season
+    sku: '',    // Added SKU
   })
 
   const [images, setImages] = useState([])
@@ -392,7 +458,10 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
         colors: productDetails.colors || [],
         tags: productDetails.tags || [],
         features: productDetails.features || [],
+
         specifications: productDetails.specifications || [],
+        season: productDetails.season || '',
+        sku: productDetails.sku || '',
       })
       setImages(productDetails.images || [])
     }
@@ -661,7 +730,10 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
       formDataObj.append('colors', JSON.stringify(formData.colors || []))
       formDataObj.append('tags', JSON.stringify(formData.tags || []))
       formDataObj.append('features', JSON.stringify(formData.features || []))
+
       formDataObj.append('specifications', JSON.stringify(formData.specifications || []))
+      formDataObj.append('season', formData.season || '')
+      formDataObj.append('sku', formData.sku || '')
 
       const res = await fetch(`/api/brand/products/${product.id}`, {
         method: 'PUT',
@@ -795,8 +867,8 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
                           onDragEnd={handleDragEnd}
                           onDrop={(e) => !isReordering && handleDrop(e, index)}
                           className={`relative flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 transition-all duration-200 ${isDropTarget
-                              ? 'border-yellow-400 border-dashed scale-105 shadow-lg'
-                              : 'border-gray-200'
+                            ? 'border-yellow-400 border-dashed scale-105 shadow-lg'
+                            : 'border-gray-200'
                             } ${isDragging
                               ? 'opacity-30 cursor-grabbing scale-95'
                               : 'cursor-grab hover:border-gray-300'
@@ -896,6 +968,30 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
                       onChange={(e) => handleInputChange('subCategory', e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">SKU</label>
+                    <input
+                      type="text"
+                      value={formData.sku}
+                      onChange={(e) => handleInputChange('sku', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
+                    <select
+                      value={formData.season}
+                      onChange={(e) => handleInputChange('season', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    >
+                      <option value="">Select Season</option>
+                      <option value="Spring">Spring</option>
+                      <option value="Summer">Summer</option>
+                      <option value="Autumn">Autumn</option>
+                      <option value="Winter">Winter</option>
+                      <option value="All Seasons">All Seasons</option>
+                    </select>
                   </div>
                 </div>
               </div>

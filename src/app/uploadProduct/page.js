@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation'
-import { Upload, ImageIcon, DollarSign, Package, Tag, Palette, Ruler, AlertCircle, Save, Eye } from "lucide-react"
+import { Upload, ImageIcon, DollarSign, Package, Tag, Palette, Ruler, AlertCircle, Save, Eye, X } from "lucide-react"
 
 export default function BrandProductUpload() {
     const [formData, setFormData] = useState({
@@ -24,7 +24,9 @@ export default function BrandProductUpload() {
         material: "",
         fitType: "",
         occasion: "",
+
         careInstructions: "",
+        season: "All Seasons",
         status: 'active',
         sizeChart: null,
         virtualTryOnImage: null,
@@ -34,10 +36,12 @@ export default function BrandProductUpload() {
     })
 
     const [dragActive, setDragActive] = useState(false)
+    const [vtonDragActive, setVtonDragActive] = useState(false)
     const [previewMode, setPreviewMode] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [successMsg, setSuccessMsg] = useState(null)
     const [errorMsg, setErrorMsg] = useState(null)
+    const [extractedFeatures, setExtractedFeatures] = useState(null)
     const router = useRouter()
     // Local controlled text inputs for tags/features so user can type commas naturally.
     const [tagsInput, setTagsInput] = useState((formData.tags || []).join(', '))
@@ -136,6 +140,26 @@ export default function BrandProductUpload() {
         }
     }
 
+    const handleVtonDrag = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setVtonDragActive(true)
+        } else if (e.type === "dragleave") {
+            setVtonDragActive(false)
+        }
+    }
+
+    const handleVtonDrop = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setVtonDragActive(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleInputChange("virtualTryOnImage", e.dataTransfer.files[0])
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setSubmitting(true)
@@ -167,7 +191,9 @@ export default function BrandProductUpload() {
             fd.append('material', formData.material || '')
             fd.append('fitType', formData.fitType || '')
             fd.append('occasion', formData.occasion || '')
+
             fd.append('careInstructions', formData.careInstructions || '')
+            fd.append('season', formData.season || 'All Seasons')
             // arrays: send as JSON strings (backend can JSON.parse)
             fd.append('sizes', JSON.stringify(formData.sizes || []))
             fd.append('colors', JSON.stringify(formData.colors || []))
@@ -232,7 +258,12 @@ export default function BrandProductUpload() {
             }
 
             setSuccessMsg(data?.message || 'Product uploaded successfully')
-            setTimeout(() => router.push('/brandDashboard'), 1200)
+            if (data?.extractedFeatures) {
+                setExtractedFeatures(data.extractedFeatures)
+                // Don't auto-redirect so user can see features
+            } else {
+                setTimeout(() => router.push('/brandDashboard'), 1200)
+            }
         } catch (err) {
             console.error('Error uploading product:', err)
             setErrorMsg(err.message || 'Failed to upload product')
@@ -285,6 +316,33 @@ export default function BrandProductUpload() {
                 {errorMsg && (
                     <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded">
                         {errorMsg}
+                    </div>
+                )}
+
+                {extractedFeatures && (
+                    <div className="mb-6 bg-white border border-yellow-200 rounded-lg shadow-sm overflow-hidden">
+                        <div className="bg-yellow-50 px-4 py-3 border-b border-yellow-200">
+                            <h3 className="font-semibold text-yellow-800">CLIP Extracted Features</h3>
+                            <p className="text-sm text-yellow-700">These features were automatically extracted from your product thumbnail for AI recommendations.</p>
+                        </div>
+                        <div className="p-4">
+                            <ul className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {extractedFeatures.map((f, idx) => (
+                                    <li key={idx} className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded border border-gray-100">
+                                        <span className="font-medium">{f.feature}</span>
+                                        <span className="text-gray-500">{(f.score * 100).toFixed(1)}%</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={() => router.push('/brandDashboard')}
+                                    className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 rounded-lg font-medium transition-colors"
+                                >
+                                    Go to Dashboard
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -446,6 +504,21 @@ export default function BrandProductUpload() {
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
+                                    <select
+                                        value={formData.season}
+                                        onChange={(e) => handleInputChange("season", e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                                    >
+                                        <option value="All Seasons">All Seasons</option>
+                                        <option value="Spring">Spring</option>
+                                        <option value="Summer">Summer</option>
+                                        <option value="Autumn">Autumn</option>
+                                        <option value="Winter">Winter</option>
+                                    </select>
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Care Instructions</label>
                                     <textarea
@@ -577,7 +650,13 @@ export default function BrandProductUpload() {
                                 </div>
                             </div>
 
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors">
+                            <div
+                                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors relative ${vtonDragActive ? "border-yellow-400 bg-yellow-50" : "border-gray-300 hover:border-yellow-400"}`}
+                                onDragEnter={handleVtonDrag}
+                                onDragLeave={handleVtonDrag}
+                                onDragOver={handleVtonDrag}
+                                onDrop={handleVtonDrop}
+                            >
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -585,17 +664,37 @@ export default function BrandProductUpload() {
                                     className="hidden"
                                     id="virtual-try-on-upload"
                                 />
-                                <label htmlFor="virtual-try-on-upload" className="cursor-pointer block">
-                                    <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-gray-600 font-medium">Click to upload Virtual Try-on Image</p>
-                                    <p className="text-gray-400 text-xs mt-1">JPG, PNG, WebP</p>
-                                    {formData.virtualTryOnImage && (
+                                {formData.virtualTryOnImage ? (
+                                    <div className="relative inline-block mt-2 group">
+                                        <img
+                                            src={URL.createObjectURL(formData.virtualTryOnImage)}
+                                            alt="Virtual Try-On Preview"
+                                            className="h-48 w-auto object-contain rounded border border-gray-200 shadow-sm"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                handleInputChange("virtualTryOnImage", null)
+                                            }}
+                                            className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors z-10 opacity-0 group-hover:opacity-100"
+                                            title="Remove Image"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
                                         <div className="mt-3 inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
                                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                                             {formData.virtualTryOnImage.name}
                                         </div>
-                                    )}
-                                </label>
+                                    </div>
+                                ) : (
+                                    <label htmlFor="virtual-try-on-upload" className="cursor-pointer block h-full w-full">
+                                        <ImageIcon className={`w-8 h-8 mx-auto mb-2 ${vtonDragActive ? "text-yellow-500" : "text-gray-400"}`} />
+                                        <p className="text-gray-600 font-medium">Click to upload or drag & drop Virtual Try-on Image</p>
+                                        <p className="text-gray-400 text-xs mt-1">JPG, PNG, WebP (Only 1 image)</p>
+                                    </label>
+                                )}
                             </div>
                         </div>
 

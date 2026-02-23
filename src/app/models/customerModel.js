@@ -35,6 +35,10 @@ const customerSchema = new mongoose.Schema({
     stylePreferences: [{
         type: String,
     }],
+    styleEmbedding: {
+        type: [Number],
+        default: [],
+    },
     size: [{
         type: String,
     }],

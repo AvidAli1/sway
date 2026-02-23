@@ -38,12 +38,12 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {
@@ -128,12 +128,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find the product
-    const product = await Product.findOne({ 
-      _id: id, 
-      brand: brand._id 
+    const product = await Product.findOne({
+      _id: id,
+      brand: brand._id
     });
 
     if (!product) {

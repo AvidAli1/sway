@@ -3,6 +3,7 @@ import connectToDatabase from '@/utils/dbConnect';
 import User from '@/app/models/userModel';
 import Customer from '@/app/models/customerModel';
 import { authMiddleware } from '@/utils/authMiddleware';
+import { getTextEmbedding } from '@/utils/recommendationService';
 
 export async function PUT(request) {
   try {
@@ -18,9 +19,9 @@ export async function PUT(request) {
     await connectToDatabase();
 
     const body = await request.json();
-    const { 
+    const {
       // User fields
-      name, 
+      name,
       phone,
       // Customer fields
       DOB,
@@ -50,7 +51,26 @@ export async function PUT(request) {
     if (DOB !== undefined) customerUpdateData.DOB = DOB;
     if (gender !== undefined) customerUpdateData.gender = gender;
     if (newsletterOptIn !== undefined) customerUpdateData.newsletterOptIn = newsletterOptIn;
-    if (stylePreferences !== undefined) customerUpdateData.stylePreferences = stylePreferences;
+    if (newsletterOptIn !== undefined) customerUpdateData.newsletterOptIn = newsletterOptIn;
+    if (stylePreferences !== undefined) {
+      customerUpdateData.stylePreferences = stylePreferences;
+
+      // Generate embedding if preferences are provided
+      if (Array.isArray(stylePreferences) && stylePreferences.length > 0) {
+        const styleText = stylePreferences.join(' ');
+        try {
+          const embedding = await getTextEmbedding(styleText);
+          if (embedding) {
+            customerUpdateData.styleEmbedding = embedding;
+          }
+        } catch (embedErr) {
+          console.error("Failed to generate style embedding:", embedErr);
+        }
+      } else {
+        // If preferences cleared, clear embedding
+        customerUpdateData.styleEmbedding = [];
+      }
+    }
     if (size !== undefined) customerUpdateData.size = size;
     if (addresses !== undefined) customerUpdateData.addresses = addresses;
 

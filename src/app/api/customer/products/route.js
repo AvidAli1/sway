@@ -3,6 +3,9 @@ import connectToDatabase from '@/utils/dbConnect';
 import Product from '@/app/models/productModel';
 import Brand from '@/app/models/brandModel';
 
+import Customer from '@/app/models/customerModel';
+import { authMiddleware } from '@/utils/authMiddleware';
+
 // GET /api/customer/products - Get products for customers with infinite scroll
 export async function GET(request) {
   try {
@@ -11,7 +14,7 @@ export async function GET(request) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 12; // Default 12 for grid layout
+    const limit = parseInt(searchParams.get('limit')) || 12; // Grid layout default
     const category = searchParams.get('category');
     const subCategory = searchParams.get('subCategory');
     const gender = searchParams.get('gender');
@@ -20,11 +23,31 @@ export async function GET(request) {
     const brand = searchParams.get('brand');
     const colorsParam = searchParams.get('colors');
     const search = searchParams.get('search');
+    const ratingParam = searchParams.get('rating');
+    const rating = ratingParam ? parseFloat(ratingParam) : null;
     const sortBy = searchParams.get('sortBy') || 'createdAt'; // createdAt, price, name, popularity
     const sortOrder = searchParams.get('sortOrder') || 'desc'; // asc, desc
     const featured = searchParams.get('featured') === 'true';
 
+    // Helper for Season
+    function getSeason(date = new Date()) {
+      const month = date.getMonth();
+      if (month === 11 || month <= 1) return 'Winter';
+      if (month >= 2 && month <= 4) return 'Spring';
+      if (month >= 5 && month <= 7) return 'Summer';
+      return 'Autumn';
+    }
+    const currentSeason = getSeason();
+
+    const seasonsArr = ['Winter', 'Spring', 'Summer', 'Autumn'];
+    const currentIdx = seasonsArr.indexOf(currentSeason) !== -1 ? seasonsArr.indexOf(currentSeason) : 0;
+    const seasonPriority = [currentSeason, 'All Seasons'];
+    for (let i = 1; i < 4; i++) {
+      seasonPriority.push(seasonsArr[(currentIdx + i) % 4]);
+    }
+
     // Build query - only show active products
+    // Layer 1: Stock (applied to ALL queries)
     const query = {
       status: 'active',
       inStock: true
@@ -61,6 +84,10 @@ export async function GET(request) {
       query.price = { ...query.price, $lte: maxPrice };
     }
 
+    if (rating !== null && !isNaN(rating) && rating > 0) {
+      query.ratings = { $gte: rating };
+    }
+
     if (brand) {
       const brandNames = brand.split(',');
       // Find brand IDs for the given names
@@ -84,15 +111,234 @@ export async function GET(request) {
       query.isFeatured = true;
     }
 
+    let searchEmbedding = null;
+    let queryVector = null;
+    let isSemanticSearch = false;
+
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search, 'i')] } },
-        { category: { $regex: search, $options: 'i' } },
-        { subCategory: { $regex: search, $options: 'i' } }
-      ];
+      try {
+        const embedRes = await fetch("http://127.0.0.1:8000/embed-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: search })
+        });
+        if (embedRes.ok) {
+          const embedData = await embedRes.json();
+          if (embedData.embedding) {
+            searchEmbedding = embedData.embedding;
+            queryVector = searchEmbedding;
+            isSemanticSearch = true;
+          }
+        }
+      } catch (e) {
+        console.error("Semantic search embedding failed:", e);
+      }
+
+      if (!searchEmbedding) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $in: [new RegExp(search, 'i')] } },
+          { category: { $regex: search, $options: 'i' } },
+          { subCategory: { $regex: search, $options: 'i' } }
+        ];
+      }
     }
+
+    // --- Vector Search Logic ---
+    if (!queryVector && (sortBy === 'createdAt' || sortBy === 'recommended') && !search) {
+      const authResult = await authMiddleware(request);
+      let customer = null;
+      if (!authResult.error && authResult.user) {
+        try {
+          customer = await Customer.findOne({ userId: authResult.user.id });
+          if (customer && customer.styleEmbedding && customer.styleEmbedding.length > 0) {
+            queryVector = customer.styleEmbedding;
+            console.log(`User (${customer.userId}) has style embedding. Proceeding with Recommender Search...`);
+          } else {
+            console.log(`User (${customer.userId}) authenticated, but NO style embedding exists on profile. Skipping Vector Search.`);
+          }
+        } catch (e) { console.error("Customer fetch error", e); }
+      }
+    }
+
+    if (queryVector) {
+      console.log("\n--- USING VECTOR SEARCH ---");
+      console.log(`Type: ${isSemanticSearch ? "Semantic Keyword Search" : "User Profile Recommendation"}`);
+      const vectorPipeline = [];
+
+      // 1. Vector Search Stage
+      vectorPipeline.push({
+        $vectorSearch: {
+          index: "vector_index",
+          path: "embedding",
+          queryVector: queryVector,
+          numCandidates: 250,
+          limit: 200, // Fetch top 200 matches to allow sorting by season later
+          filter: { inStock: true }
+        }
+      });
+
+      // 2. Match Stage (Apply other UI filters: category, price, brand, etc.)
+      // Exclude inStock/season from 'query' here since vector search handled it? 
+      // Actually, safest to re-apply 'query' to ensure strictness (e.g. minPrice) which VectorSearch filter might not support fully or easily
+      // But we need to remove the parts vectorSearch already filtered if we want to avoid redundancy, 
+      // however redundancy is fine.
+      if (Object.keys(query).length > 0) {
+        vectorPipeline.push({ $match: query });
+      }
+
+      // 3. Project Vector Score and Season Rank
+      vectorPipeline.push({
+        $addFields: {
+          score: { $meta: "vectorSearchScore" },
+          seasonRank: {
+            $let: {
+              vars: {
+                idx: { $indexOfArray: [seasonPriority, { $ifNull: ["$season", "None"] }] }
+              },
+              in: { $cond: [{ $eq: ["$$idx", -1] }, 99, "$$idx"] }
+            }
+          }
+        }
+      });
+
+      // Sort logic: priority depends on if it's semantic search vs seasonal recommendations
+      if (isSemanticSearch) {
+        vectorPipeline.push({ $sort: { score: -1, seasonRank: 1 } });
+      } else {
+        vectorPipeline.push({ $sort: { seasonRank: 1, score: -1 } });
+      }
+
+      // 4. Pagination
+      vectorPipeline.push({ $skip: (page - 1) * limit });
+      vectorPipeline.push({ $limit: limit });
+
+      // 5. Lookup Brand
+      vectorPipeline.push({
+        $lookup: {
+          from: "brands",
+          localField: "brand",
+          foreignField: "_id",
+          as: "brand"
+        }
+      });
+      vectorPipeline.push({ $unwind: { path: "$brand", preserveNullAndEmptyArrays: true } });
+
+
+
+      // Execute Pipeline
+      let products = await Product.aggregate(vectorPipeline);
+
+      console.log("\n--- RECOMMENDATION LOAD ---");
+      console.log(`Layer 1 (Seasonal Priority): Current Season is ${currentSeason}`);
+      console.log(`Priority Order:`, seasonPriority);
+      console.log("---");
+      console.log("Layer 2 (Vector Embedding & Similarities):");
+      if (products.length === 0) {
+        console.log(" No vector matches found for the query.");
+      } else {
+        products.forEach((p, index) => {
+          console.log(` ${index + 1}. [${p.season || 'No Season'} - Rank ${p.seasonRank}] ${p.name}`);
+          console.log(`    Cosine Similarity Score: ${p.score ? p.score.toFixed(4) : 'N/A'}`);
+        });
+      }
+      console.log("---------------------------\n");
+
+      // --- Backfill Logic: If vector search results < limit, fill with standard sort ---
+      if (products.length < limit) {
+        const needed = limit - products.length;
+        console.log(`Vector search returned ${products.length} items. Backfilling with ${needed} items.`);
+
+        // Create fallback query excluding already found products
+        const existingIds = products.map(p => p._id);
+        const fallbackQuery = { ...query, _id: { $nin: existingIds } };
+
+        // Standard Sort (Newest) + SeasonRank fallback
+        const fallbackPipeline = [
+          { $match: fallbackQuery },
+          {
+            $addFields: {
+              seasonRank: {
+                $let: {
+                  vars: {
+                    idx: { $indexOfArray: [seasonPriority, { $ifNull: ["$season", "None"] }] }
+                  },
+                  in: { $cond: [{ $eq: ["$$idx", -1] }, 99, "$$idx"] }
+                }
+              }
+            }
+          },
+          { $sort: { seasonRank: 1, createdAt: -1 } },
+          { $limit: needed },
+          {
+            $lookup: {
+              from: "brands",
+              localField: "brand",
+              foreignField: "_id",
+              as: "brand"
+            }
+          },
+          { $unwind: { path: "$brand", preserveNullAndEmptyArrays: true } },
+          {
+            $addFields: {
+              brand: {
+                _id: "$brand._id",
+                name: "$brand.name",
+                businessEmail: "$brand.businessEmail",
+                logo: "$brand.logo"
+              }
+            }
+          },
+          { $project: { __v: 0 } }
+        ];
+        const fallbackProducts = await Product.aggregate(fallbackPipeline);
+
+        products = [...products, ...fallbackProducts];
+      }
+
+      // Get total count (Approximation: use standard count of query)
+      // This count includes non-vector matches, which is good for UX listing
+      const totalProducts = await Product.countDocuments(query);
+      const totalPages = Math.ceil(totalProducts / limit);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      // Get filters metadata
+      const categories = await Product.distinct('category', { status: 'active' });
+      const subCategories = category ?
+        await Product.distinct('subCategory', { status: 'active', category }) :
+        await Product.distinct('subCategory', { status: 'active' });
+      const distinctBrandIds = await Product.distinct('brand', { status: 'active' });
+      const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
+      const brands = brandDocs.map(b => b.name).sort();
+      const colors = await Product.distinct('colors', { status: 'active' });
+      const priceRange = await Product.aggregate([
+        { $match: { status: 'active', inStock: true } },
+        { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        products,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalProducts,
+          hasNextPage,
+          hasPrevPage,
+          limit
+        },
+        filters: {
+          categories,
+          subCategories,
+          brands,
+          colors,
+          priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
+        }
+      });
+    }
+    // --------------------------------------------------
 
     // Build sort object
     let sort = {};
@@ -116,14 +362,47 @@ export async function GET(request) {
     // Calculate pagination
     const skip = (page - 1) * limit;
 
-    // Get products with pagination
-    const products = await Product.find(query)
-      .populate('brand', 'name businessEmail logo')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .select('-__v') // Exclude version field
-      .lean();
+    // Get products with pagination using aggregation for custom season sort
+    const pipeline = [
+      { $match: query },
+      {
+        $addFields: {
+          seasonRank: {
+            $let: {
+              vars: {
+                idx: { $indexOfArray: [seasonPriority, { $ifNull: ["$season", "None"] }] }
+              },
+              in: { $cond: [{ $eq: ["$$idx", -1] }, 99, "$$idx"] }
+            }
+          }
+        }
+      },
+      { $sort: { seasonRank: 1, ...sort } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "brands",
+          localField: "brand",
+          foreignField: "_id",
+          as: "brand"
+        }
+      },
+      { $unwind: { path: "$brand", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          brand: {
+            _id: "$brand._id",
+            name: "$brand.name",
+            businessEmail: "$brand.businessEmail",
+            logo: "$brand.logo"
+          }
+        }
+      },
+      { $project: { __v: 0 } }
+    ];
+
+    const products = await Product.aggregate(pipeline);
 
     // Get total count for pagination
     const totalProducts = await Product.countDocuments(query);

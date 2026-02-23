@@ -69,7 +69,7 @@ export default function CartPage() {
               if (data.success && data.cart) {
                 // Store full cart data
                 setCartData(data.cart)
-                
+
                 // Set applied coupon if exists
                 if (data.cart.couponCode && data.cart.couponDiscount > 0) {
                   setAppliedCoupon({
@@ -123,8 +123,8 @@ export default function CartPage() {
                 const parsed = JSON.parse(localCart)
                 const sanitized = (Array.isArray(parsed) ? parsed : []).map((item) => ({
                   ...item,
-                  brand: typeof item.brand === "string" 
-                    ? item.brand 
+                  brand: typeof item.brand === "string"
+                    ? item.brand
                     : (item.brand?.name || "Brand"),
                 }))
                 setCartItems(sanitized)
@@ -139,8 +139,8 @@ export default function CartPage() {
             // Sanitize cart items to ensure brand is always a string
             const sanitized = (Array.isArray(parsed) ? parsed : []).map((item) => ({
               ...item,
-              brand: typeof item.brand === "string" 
-                ? item.brand 
+              brand: typeof item.brand === "string"
+                ? item.brand
                 : (item.brand?.name || "Brand"),
             }))
             setCartItems(sanitized)
@@ -157,8 +157,8 @@ export default function CartPage() {
             const parsed = JSON.parse(localCart)
             const sanitized = (Array.isArray(parsed) ? parsed : []).map((item) => ({
               ...item,
-              brand: typeof item.brand === "string" 
-                ? item.brand 
+              brand: typeof item.brand === "string"
+                ? item.brand
                 : (item.brand?.name || "Brand"),
             }))
             setCartItems(sanitized)
@@ -218,7 +218,7 @@ export default function CartPage() {
             const data = await res.json()
             if (data.success && data.cart) {
               setCartData(data.cart)
-              
+
               // Set applied coupon if exists
               if (data.cart.couponCode && data.cart.couponDiscount > 0) {
                 setAppliedCoupon({
@@ -298,7 +298,7 @@ export default function CartPage() {
             // Update cart data from API response
             if (data.cart) {
               setCartData(data.cart)
-              
+
               // Update applied coupon if exists
               if (data.cart.couponCode && data.cart.couponDiscount > 0) {
                 setAppliedCoupon({
@@ -432,7 +432,7 @@ export default function CartPage() {
         next.delete(itemId)
         return next
       })
-      
+
       // Refresh cart from API to get updated totals (only for logged-in users)
       if (user && user.role === "customer") {
         refreshCart()
@@ -493,7 +493,7 @@ export default function CartPage() {
       setIsClearingCart(false)
       setAppliedCoupon(null)
       setCouponCode("")
-      
+
       // Refresh cart from API to get updated totals (only for logged-in users)
       if (user && user.role === "customer") {
         refreshCart()
@@ -577,10 +577,38 @@ export default function CartPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading cart...</p>
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200 h-16 w-full"></header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
+          <div className="mb-6">
+            <div className="h-8 w-48 bg-gray-200 rounded mb-2"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded"></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-4">
+              {[1, 2].map(i => (
+                <div key={i} className="bg-white rounded-lg p-6 flex gap-4">
+                  <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                  <div className="flex-1 space-y-3">
+                    <div className="h-5 w-3/4 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-1/4 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-1/3 bg-gray-200 rounded mt-4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
+                <div className="h-6 w-1/2 bg-gray-200 rounded mb-6"></div>
+                <div className="space-y-3">
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                  <div className="h-4 w-full bg-gray-200 rounded"></div>
+                </div>
+                <div className="h-12 w-full bg-gray-200 rounded-lg mt-6"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -645,12 +673,17 @@ export default function CartPage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-4 py-1.5 text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -701,100 +734,100 @@ export default function CartPage() {
                   const isRemoving = itemsToRemove.has(item.id)
                   return (
                     <motion.div
-                    key={uniqueKey}
-                    initial={{ opacity: 1, x: 0 }}
-                    animate={isRemoving ? { opacity: 0, x: -500 } : { opacity: 1, x: 0 }}
-                    exit={{ 
-                      opacity: 0, 
-                      x: -500,
-                      transition: { 
-                        duration: 0.4, 
-                        ease: [0.4, 0, 0.2, 1]
-                      }
-                    }}
-                    layout
-                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                    className="bg-white rounded-lg shadow-sm p-6"
-                    style={{ pointerEvents: isRemoving ? 'none' : 'auto' }}
-                  >
-                    <div className="flex gap-4">
-                      {/* Product Image */}
-                      <Link href={`/productDetails/${item.id}`} className="flex-shrink-0">
-                        <img
-                          src={item.image || "/placeholder.svg"}
-                          alt={item.title}
-                          className="w-24 h-24 object-cover rounded-lg"
-                        />
-                      </Link>
+                      key={uniqueKey}
+                      initial={{ opacity: 1, x: 0 }}
+                      animate={isRemoving ? { opacity: 0, x: -500 } : { opacity: 1, x: 0 }}
+                      exit={{
+                        opacity: 0,
+                        x: -500,
+                        transition: {
+                          duration: 0.4,
+                          ease: [0.4, 0, 0.2, 1]
+                        }
+                      }}
+                      layout
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                      className="bg-white rounded-lg shadow-sm p-6"
+                      style={{ pointerEvents: isRemoving ? 'none' : 'auto' }}
+                    >
+                      <div className="flex gap-4">
+                        {/* Product Image */}
+                        <Link href={`/productDetails/${item.id}`} className="flex-shrink-0">
+                          <img
+                            src={item.image || "/placeholder.svg"}
+                            alt={item.title}
+                            className="w-24 h-24 object-cover rounded-lg"
+                          />
+                        </Link>
 
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <Link
-                              href={`/productDetails/${item.id}`}
-                              className="text-lg font-semibold text-gray-900 hover:text-yellow-600 transition-colors"
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <Link
+                                href={`/productDetails/${item.id}`}
+                                className="text-lg font-semibold text-gray-900 hover:text-yellow-600 transition-colors"
+                              >
+                                {item.title}
+                              </Link>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {typeof item.brand === "string" ? item.brand : (item.brand?.name || "Brand")}
+                              </p>
+                              {(item.selectedSize || item.selectedColor) && (
+                                <div className="flex gap-2 mt-2">
+                                  {item.selectedSize && (
+                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                      Size: {item.selectedSize}
+                                    </span>
+                                  )}
+                                  {item.selectedColor && (
+                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                      Color: {item.selectedColor}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="text-gray-400 hover:text-red-600 transition-colors ml-4"
                             >
-                              {item.title}
-                            </Link>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {typeof item.brand === "string" ? item.brand : (item.brand?.name || "Brand")}
-                            </p>
-                            {(item.selectedSize || item.selectedColor) && (
-                              <div className="flex gap-2 mt-2">
-                                {item.selectedSize && (
-                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                    Size: {item.selectedSize}
-                                  </span>
-                                )}
-                                {item.selectedColor && (
-                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                    Color: {item.selectedColor}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                              <Trash2 className="w-5 h-5" />
+                            </button>
                           </div>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="text-gray-400 hover:text-red-600 transition-colors ml-4"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
 
-                        {/* Price and Quantity */}
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold text-gray-900">
-                              PKR {item.price.toLocaleString()}
-                            </span>
-                            {item.originalPrice > item.price && (
-                              <span className="text-sm text-gray-500 line-through">
-                                PKR {item.originalPrice.toLocaleString()}
+                          {/* Price and Quantity */}
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-bold text-gray-900">
+                                PKR {item.price.toLocaleString()}
                               </span>
-                            )}
-                          </div>
+                              {item.originalPrice > item.price && (
+                                <span className="text-sm text-gray-500 line-through">
+                                  PKR {item.originalPrice.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
 
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <span className="w-12 text-center font-medium">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <span className="w-12 text-center font-medium">{item.quantity}</span>
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
                     </motion.div>
                   )
                 })}

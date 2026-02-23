@@ -203,8 +203,36 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
+      <div className="min-h-screen bg-gray-50 flex flex-col animate-pulse">
+        <header className="bg-white border-b border-gray-200 h-16 w-full"></header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+          <div className="flex flex-col lg:flex-row gap-12">
+            <div className="w-full lg:w-1/2 flex flex-col-reverse sm:flex-row gap-4">
+              <div className="flex sm:flex-col gap-4 overflow-x-auto sm:overflow-visible">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-20 h-24 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                ))}
+              </div>
+              <div className="flex-1 bg-gray-200 rounded-2xl aspect-[3/4]"></div>
+            </div>
+
+            <div className="w-full lg:w-1/2 space-y-6 pt-4">
+              <div className="h-6 w-32 bg-gray-200 rounded-full"></div>
+              <div className="h-10 w-3/4 bg-gray-200 rounded"></div>
+              <div className="h-4 w-1/4 bg-gray-200 rounded"></div>
+              <div className="h-8 w-1/3 bg-gray-200 rounded mt-4"></div>
+              <div className="flex gap-4 mt-4">
+                <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
+                <div className="h-6 w-32 bg-gray-200 rounded-full"></div>
+              </div>
+              <div className="w-full h-px bg-gray-200 my-8"></div>
+              <div className="space-y-4 pt-4">
+                <div className="h-14 w-full bg-gray-200 rounded-2xl"></div>
+                <div className="h-14 w-full bg-gray-200 rounded-2xl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -384,12 +412,17 @@ export default function ProductDetailPage() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Login
-                </Link>
+                <div className="hidden md:flex items-center bg-gray-100/80 backdrop-blur-sm p-1 rounded-full border border-gray-200 hover:border-gray-300 transition-all shadow-sm">
+                  <Link href="/login" className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-white hover:text-black hover:shadow-sm rounded-full transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-yellow-400 text-black px-4 py-1.5 text-sm font-semibold rounded-full shadow-sm hover:bg-yellow-500 transition-all ml-1"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -512,7 +545,7 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="flex items-center gap-4">
               <span className="text-3xl font-bold text-gray-900">PKR {product.price.toLocaleString()}</span>
-              {product.originalPrice && (
+              {product.originalPrice > product.price && (
                 <>
                   <span className="text-xl text-gray-500 line-through">
                     PKR {product.originalPrice.toLocaleString()}
@@ -875,7 +908,7 @@ export default function ProductDetailPage() {
                     <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand?.name || relatedProduct.brand}</p>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-900">PKR {relatedProduct.price.toLocaleString()}</span>
-                      {relatedProduct.originalPrice && (
+                      {relatedProduct.originalPrice > relatedProduct.price && (
                         <span className="text-sm text-gray-500 line-through">
                           PKR {relatedProduct.originalPrice.toLocaleString()}
                         </span>
