@@ -212,6 +212,7 @@ function ProductsPageContent() {
         inStock: !!p.inStock,
         isSponsored: !!p.isFeatured,
         tags: p.tags || [],
+        score: p.score,
       })) : []
 
       if (shouldReplace) {

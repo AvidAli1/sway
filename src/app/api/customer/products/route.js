@@ -123,9 +123,9 @@ export async function GET(request) {
 
     if (search) {
       try {
-        const embedData = await getTextEmbedding(search);
-        if (embedData && embedData.embedding) {
-          searchEmbedding = embedData.embedding;
+        const embedArray = await getTextEmbedding(search);
+        if (embedArray && Array.isArray(embedArray) && embedArray.length > 0) {
+          searchEmbedding = embedArray;
           queryVector = searchEmbedding;
           isSemanticSearch = true;
         }
@@ -139,7 +139,9 @@ export async function GET(request) {
           { description: { $regex: search, $options: 'i' } },
           { tags: { $in: [new RegExp(search, 'i')] } },
           { category: { $regex: search, $options: 'i' } },
-          { subCategory: { $regex: search, $options: 'i' } }
+          { subCategory: { $regex: search, $options: 'i' } },
+          { occasion: { $regex: search, $options: 'i' } },
+          { material: { $regex: search, $options: 'i' } }
         ];
       }
     }
@@ -261,7 +263,9 @@ export async function GET(request) {
             { description: { $regex: search, $options: 'i' } },
             { tags: { $in: [new RegExp(search, 'i')] } },
             { category: { $regex: search, $options: 'i' } },
-            { subCategory: { $regex: search, $options: 'i' } }
+            { subCategory: { $regex: search, $options: 'i' } },
+            { occasion: { $regex: search, $options: 'i' } },
+            { material: { $regex: search, $options: 'i' } }
           ];
         }
 
