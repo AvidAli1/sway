@@ -204,7 +204,7 @@ export async function GET(request) {
 
       // Sort logic: priority depends on if it's semantic search vs seasonal recommendations
       if (isSemanticSearch) {
-        vectorPipeline.push({ $sort: { score: -1, seasonRank: 1 } });
+        vectorPipeline.push({ $sort: { score: -1 } });
       } else {
         vectorPipeline.push({ $sort: { seasonRank: 1, score: -1 } });
       }
@@ -253,6 +253,18 @@ export async function GET(request) {
         const existingIds = products.map(p => p._id);
         const fallbackQuery = { ...query, _id: { $nin: existingIds } };
 
+        // For semantic keyword search, if our embeddings yield too few results,
+        // we should fallback to standard keyword match rather than random
+        if (isSemanticSearch && search) {
+          fallbackQuery.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { tags: { $in: [new RegExp(search, 'i')] } },
+            { category: { $regex: search, $options: 'i' } },
+            { subCategory: { $regex: search, $options: 'i' } }
+          ];
+        }
+
         // Standard Sort (Newest) + SeasonRank fallback
         const fallbackPipeline = [
           { $match: fallbackQuery },
@@ -268,7 +280,7 @@ export async function GET(request) {
               }
             }
           },
-          { $sort: { seasonRank: 1, createdAt: -1 } },
+          { $sort: isSemanticSearch ? { score: -1, createdAt: -1 } : { seasonRank: 1, createdAt: -1 } },
           { $limit: needed },
           {
             $lookup: {
