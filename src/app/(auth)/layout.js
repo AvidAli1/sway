@@ -58,7 +58,9 @@ export default function AuthLayout({ children }) {
                     </Link>
 
                     <h1 className="text-xl sm:text-2xl font-bold text-black absolute left-1/2 transform -translate-x-1/2 z-0">
-                        <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
+                        <Link href="/">
+                            <img src="/logo.png" alt="Logo" className="h-[24px] w-auto" />
+                        </Link>
                     </h1>
 
                     {/* Login/Signup Toggle or User Dropdown */}

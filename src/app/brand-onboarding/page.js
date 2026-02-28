@@ -237,7 +237,9 @@ function BrandOnboardingContent() {
       <header className="bg-white border-b border-gray-200 px-4 py-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold text-black absolute left-[48%] sm:left-[50%] transform -translate-x-1/2">
-            <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
+            <Link href="/">
+              <img src="/logo.png" alt="Logo" className="h-[24px] w-auto" />
+            </Link>
           </h1>
         </div>
       </header>

@@ -49,7 +49,7 @@ export default function Header({ user, onLoginClick, onViewModeChange, viewMode 
                 <span className="hidden sm:block font-medium pr-2">Back</span>
               </Link>
               <Link href="/">
-                <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
+                <img src="/logo.png" alt="SWAY Logo" className="h-[24px] w-auto" />
               </Link>
             </div>
           </div>

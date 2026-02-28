@@ -292,7 +292,9 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
+              <Link href="/">
+                <img src="/logo.png" alt="SWAY Logo" className="h-[24px] w-auto" />
+              </Link>
             </div>
 
             {/* Desktop Navigation */}

@@ -13,7 +13,9 @@ export default function TermsOfService() {
                                 <ArrowLeft className="w-5 h-5" />
                                 <span className="hidden sm:block font-medium">Back to Home</span>
                             </Link>
-                            <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
+                            <Link href="/">
+                                <img src="/logo.png" alt="SWAY Logo" className="h-[24px] w-auto" />
+                            </Link>
                         </div>
                     </div>
                 </div>
