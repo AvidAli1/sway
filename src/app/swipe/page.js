@@ -264,7 +264,7 @@ export default function SwipePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors transform translate-y-0.5">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="font-medium hidden sm:block mr-4">Back</span>
               </button>
@@ -272,7 +272,7 @@ export default function SwipePage() {
 
             <div className="flex-1 flex justify-left sm:justify-left justify-start sm:ml-0">
               <h1 className="text-xl font-bold text-black">
-                <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto mt-2" />
+                <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
               </h1>
             </div>
 

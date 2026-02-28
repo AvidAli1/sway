@@ -20,7 +20,7 @@ export default function AuthLayout({ children }) {
                     </Link>
 
                     <h1 className="text-xl sm:text-2xl font-bold text-black absolute left-1/2 transform -translate-x-1/2 z-0">
-                        <img src="/logo2.png" alt="Logo" className="h-9 w-auto inline" />
+                        <img src="/logo.png" alt="Logo" className="h-6 w-auto" />
                     </h1>
 
                     {/* Login/Signup Toggle */}

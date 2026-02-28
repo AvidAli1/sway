@@ -43,13 +43,13 @@ export default function Header({ user, onLoginClick, onViewModeChange, viewMode 
         <div className="flex items-center justify-between h-16">
           {/* Back Button & Logo */}
           <div className="flex items-center gap-6">
-            <div className="flex items-center transform translate-y-1">
-              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors mr-4">
-                <ArrowLeft className="w-5 h-5 transform -translate-y-1" />
-                <span className="hidden sm:block font-medium pr-2 pb-2">Back</span>
+            <div className="flex items-center">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors mr-4 transform translate-y-0.5">
+                <ArrowLeft className="w-5 h-5" />
+                <span className="hidden sm:block font-medium pr-2">Back</span>
               </button>
               <Link href="/">
-                <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto" />
+                <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
               </Link>
             </div>
           </div>

@@ -19,13 +19,14 @@ import {
   Loader2,
 } from "lucide-react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import ToastNotification from "../components/ToastNotification"
 import { useCart } from "../context/CartContext"
 import { Suspense } from "react"
 
 function ProductsPageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const { cartCount, updateCartCount } = useCart()
   const [user, setUser] = useState(null)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
@@ -583,11 +584,11 @@ function ProductsPageContent() {
           <div className="flex items-center justify-between h-16">
             {/* Back Button & Logo */}
             <div className="flex items-center gap-6">
-              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors transform translate-y-0.5">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:block font-medium">Back</span>
               </button>
-              <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto mt-2" />
+              <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
             </div>
 
             {/* Search Bar */}

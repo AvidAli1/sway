@@ -13,7 +13,7 @@ export default function CookiePolicy() {
                                 <ArrowLeft className="w-5 h-5" />
                                 <span className="hidden sm:block font-medium">Back to Home</span>
                             </Link>
-                            <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto mt-2" />
+                            <img src="/logo.png" alt="SWAY Logo" className="h-6 w-auto" />
                         </div>
                     </div>
                 </div>
