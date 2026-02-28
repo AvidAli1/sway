@@ -29,6 +29,7 @@ import { useCart } from "../../context/CartContext"
 
 export default function ProductDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const { cartCount, updateCartCount } = useCart()
   const productId = params.id
 
@@ -123,8 +124,11 @@ export default function ProductDetailPage() {
         if (!mounted) return
         const p = data.product
         // normalize images to an array of SD URLs for display
-        const images = (p.images || []).map((img) => img.SD || img.HD || img)
-        const thumbnailUrl = p.thumbnail?.SD || p.thumbnail?.HD || images[0] || null
+        const images = (p.images && p.images.length > 0)
+          ? p.images.map((img) => typeof img === 'object' ? (img?.SD || img?.HD || "/placeholder.svg") : img)
+          : [p.image || "/placeholder.svg"]
+
+        const thumbnailUrl = p.thumbnail?.SD || p.thumbnail?.HD || images[0] || "/placeholder.svg"
 
         setProduct({
           ...p,
@@ -453,8 +457,8 @@ export default function ProductDetailPage() {
             {/* Main Image */}
             <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm">
               <img
-                src={product.images?.[selectedImageIndex] || product.image}
-                alt={product.title}
+                src={product.images?.[selectedImageIndex] || product.image || "/placeholder.svg"}
+                alt={product.title || "Product"}
                 className="w-full h-[500px] object-cover"
               />
 
@@ -503,7 +507,7 @@ export default function ProductDetailPage() {
                   >
                     <img
                       src={image || "/placeholder.svg"}
-                      alt={`${product.title} ${index + 1}`}
+                      alt={`${product.title || "Product"} ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </button>

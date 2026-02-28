@@ -43,6 +43,10 @@ export default function HomePage() {
   const [headerLoaded, setHeaderLoaded] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
 
+  const [featuredProducts, setFeaturedProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [wishlist, setWishlist] = useState(new Set())
+
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
@@ -73,11 +77,63 @@ export default function HomePage() {
       if (!raw) return
       const parsed = JSON.parse(raw)
       const sessionUser = parsed?.user || parsed
-      if (sessionUser) setUser(sessionUser)
+      if (sessionUser) {
+        setUser(sessionUser)
+        // Fetch wishlist if user exists
+        const uId = sessionUser._id || sessionUser.id
+        if (uId) {
+          fetch(`/api/customer/wishlist?userId=${uId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.wishlist) {
+                setWishlist(new Set(data.wishlist.map(w => typeof w === 'object' ? w._id : w)))
+              }
+            })
+            .catch(err => console.error("Wishlist fetch error", err))
+        }
+      }
     } catch (e) {
       // ignore
     }
   }, [])
+
+  // Fetch featured products
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      setProductsLoading(true)
+      try {
+        const res = await fetch("/api/customer/products?limit=8")
+        if (!res.ok) throw new Error("Failed to fetch featured products")
+        const data = await res.json()
+
+        if (data.success && data.products) {
+          const mapped = data.products.map(p => ({
+            // Pass complete product data for quick view modal first
+            ...p,
+            id: p._id,
+            title: p.name,
+            brand: (p.brand && p.brand.name) || (typeof p.brand === 'string' ? p.brand : 'SWAY'),
+            price: p.price,
+            originalPrice: p.originalPrice,
+            image: (p.thumbnail && p.thumbnail.HD) || (p.images && p.images[0] && p.images[0].HD) || '/placeholder.svg',
+            sizes: p.sizes || [],
+            colors: p.colors || [],
+            rating: p.ratings || 0,
+            reviews: p.numReviews || 0,
+            isSponsored: !!p.isFeatured,
+            inStock: p.inStock !== false,
+          }))
+          setFeaturedProducts(mapped)
+        }
+      } catch (err) {
+        console.error("Error fetching featured products", err)
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+    fetchFeatured()
+  }, [])
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -166,74 +222,47 @@ export default function HomePage() {
     }
   }
 
-  // Mock featured products data
-  const featuredProducts = [
-    {
-      id: 1,
-      title: "Premium Cotton Hoodie",
-      brand: "Urban Style",
-      price: 4500,
-      originalPrice: 5500,
-      image: "/landing_page_products/premium_hoodie.jpg",
-      images: [
-        "/landing_page_products/premium_hoodie.jpg",
-        "/landing_page_products/premium_hoodie_2.jpg",
-        "/landing_page_products/premium_hoodie_3.jpg"
-      ],
-      colors: ["yellow", "black", "white"],
-      sizes: ["S", "M", "L", "XL"],
-      rating: 4.8,
-      reviews: 124,
-      isSponsored: true,
-      specifications: {
-        Material: "100% Organic Cotton",
-        Fit: "Regular Fit",
-        Care: "Machine wash cold",
-        Origin: "Made in Pakistan",
-      },
-    },
-    {
-      id: 2,
-      title: "Denim Jacket",
-      brand: "Street Wear",
-      price: 6200,
-      image: "/landing_page_products/denim_jacket.jpg",
-      rating: 4.6,
-      isSponsored: true,
-    },
-    {
-      id: 3,
-      title: "Casual Sneakers",
-      brand: "Comfort Walk",
-      price: 3800,
-      image: "/landing_page_products/casual_sneakers.jpg",
-      rating: 4.7,
-    },
-    {
-      id: 4,
-      title: "Vintage T-Shirt",
-      brand: "Retro Vibes",
-      price: 2200,
-      image: "/landing_page_products/vintage_tshirt.jpg",
-      rating: 4.5,
-    },
-    {
-      id: 5,
-      title: "Designer Jeans",
-      brand: "Elite Fashion",
-      price: 5800,
-      image: "/landing_page_products/designer_jeans.jpg",
-      rating: 4.9,
-    },
-    {
-      id: 6,
-      title: "Summer Dress",
-      brand: "Chic Styles",
-      price: 4200,
-      image: "/landing_page_products/summer_dress.jpg",
-      rating: 4.4,
-    },
-  ]
+  const handleToggleWishlist = async (e, productId) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      showToast("Please log in to use wishlist", "info")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("authToken")
+      const method = wishlist.has(productId) ? "DELETE" : "POST"
+
+      const res = await fetch("/api/customer/wishlist", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productId }),
+      })
+
+      if (res.ok) {
+        setWishlist(prev => {
+          const next = new Set(prev)
+          if (next.has(productId)) {
+            next.delete(productId)
+            showToast("Removed from wishlist", "info")
+          } else {
+            next.add(productId)
+            showToast("Added to wishlist", "success")
+          }
+          return next
+        })
+      }
+    } catch (error) {
+      console.error("Wishlist toggle error", error)
+      showToast("Failed to update wishlist", "error")
+    }
+  }
+
 
   const promotions = [
     {
@@ -664,89 +693,91 @@ export default function HomePage() {
           </div>
 
           {/* Animated Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {featuredProducts.map((product, index) => (
-              // Replace this section in your featuredProducts.map()
-              <div
-                key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product)
-                  setIsProductModalOpen(true)
-                }}
-                className={`block bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-700 ease-out overflow-hidden group cursor-pointer ${productsInView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-                  }`}
-                style={{ transitionDelay: productsInView ? `${500 + index * 100}ms` : "0ms" }}
-              >
-                {/* Rest of your product card content remains the same */}
-                {/* Product Image */}
-                <div className="relative">
-                  <img
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.title}
-                    className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+          {productsLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {featuredProducts.map((product, index) => (
+                // Replace this section in your featuredProducts.map()
+                <div
+                  key={product.id}
+                  onClick={() => {
+                    setSelectedProduct(product)
+                    setIsProductModalOpen(true)
+                  }}
+                  className={`block bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-700 ease-out overflow-hidden group cursor-pointer ${productsInView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                    }`}
+                  style={{ transitionDelay: productsInView ? `${500 + index * 100}ms` : "0ms" }}
+                >
+                  {/* Rest of your product card content remains the same */}
+                  {/* Product Image */}
+                  <div className="relative">
+                    <img
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.title}
+                      className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
 
-                  {/* Sponsored Badge */}
-                  {product.isSponsored && (
-                    <div className="absolute top-3 left-3 bg-yellow-400 text-black px-2 py-1 rounded-full text-xs font-semibold">
-                      Sponsored
+                    {/* Sponsored Badge */}
+                    {product.isSponsored && (
+                      <div className="absolute top-3 left-3 bg-yellow-400 text-black px-2 py-1 rounded-full text-xs font-semibold">
+                        Sponsored
+                      </div>
+                    )}
+
+                    {/* Wishlist Button */}
+                    <button
+                      onClick={(e) => handleToggleWishlist(e, product.id)}
+                      className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${wishlist.has(product.id) ? "bg-red-500 text-white" : "bg-white/80 backdrop-blur-sm text-gray-600 hover:bg-white"}`}
+                    >
+                      <Heart className="w-4 h-4" />
+                    </button>
+
+                    {/* Quick View Overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <button className="bg-white text-black px-4 py-2 rounded-full font-semibold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                        Quick View
+                      </button>
                     </div>
-                  )}
+                  </div>
 
-                  {/* Wishlist Button */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      // Add wishlist logic here
-                    }}
-                    className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
-                  >
-                    <Heart className="w-4 h-4 text-gray-600" />
-                  </button>
+                  {/* Product Info */}
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm text-gray-600">{product.rating}</span>
+                      </div>
+                      <span className="text-sm text-gray-400">•</span>
+                      <span className="text-sm text-gray-600">{product.brand}</span>
+                    </div>
 
-                  {/* Quick View Overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <button className="bg-white text-black px-4 py-2 rounded-full font-semibold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                      Quick View
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.title}</h3>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-gray-900">PKR {product.price.toLocaleString()}</span>
+                        {product.originalPrice > product.price && (
+                          <span className="text-sm text-gray-500 line-through">
+                            PKR {product.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleAddToCart(e, product)}
+                      className="w-full mt-3 bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                    >
+                      Add to Cart
                     </button>
                   </div>
                 </div>
-
-                {/* Product Info */}
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-gray-600">{product.rating}</span>
-                    </div>
-                    <span className="text-sm text-gray-400">•</span>
-                    <span className="text-sm text-gray-600">{product.brand}</span>
-                  </div>
-
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.title}</h3>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-gray-900">PKR {product.price.toLocaleString()}</span>
-                      {product.originalPrice > product.price && (
-                        <span className="text-sm text-gray-500 line-through">
-                          PKR {product.originalPrice.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => handleAddToCart(e, product)}
-                    className="w-full mt-3 bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition-colors font-medium"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* View All Button */}
           <div

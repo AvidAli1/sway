@@ -1212,15 +1212,6 @@ function EditProductModal({ product, productDetails, isLoading, onClose, onRefre
                       <option value="out_of_stock">Out of Stock</option>
                     </select>
                   </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.isFeatured}
-                      onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
-                      className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
-                    />
-                    <label className="ml-2 text-sm font-medium text-gray-700">Featured Product</label>
-                  </div>
                 </div>
               </div>
 

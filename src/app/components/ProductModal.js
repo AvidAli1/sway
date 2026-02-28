@@ -30,25 +30,8 @@ export default function ProductModal({ product, isOpen, onClose }) {
   const [toastVisible, setToastVisible] = useState(false)
   const [toastType, setToastType] = useState("info")
 
-  // Mock reviews data
-  const reviews = [
-    {
-      id: 1,
-      name: "Ahmed Khan",
-      rating: 5,
-      date: "2024-01-15",
-      comment: "Excellent quality! The fit is perfect and the material feels premium. Highly recommended!",
-      verified: true,
-    },
-    {
-      id: 2,
-      name: "Sara Ali",
-      rating: 4,
-      date: "2024-01-10",
-      comment: "Good product overall. The color is exactly as shown in the pictures. Fast delivery too.",
-      verified: true,
-    },
-  ]
+  const [reviews, setReviews] = useState([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
 
   useEffect(() => {
     if (product && product.colors && product.colors.length > 0) {
@@ -60,6 +43,34 @@ export default function ProductModal({ product, isOpen, onClose }) {
     setSelectedImageIndex(0)
     setQuantity(1)
     setActiveTab("description")
+
+    // Fetch dynamic reviews
+    if (product && product.id) {
+      const fetchReviews = async () => {
+        setReviewsLoading(true)
+        try {
+          const res = await fetch(`/api/customer/reviews?productId=${product.id}`)
+          const data = await res.json()
+          if (data.success) {
+            // Map the backend review schema cleanly to match what the modal displays
+            const mappedReviews = data.reviews.map(r => ({
+              id: r._id,
+              name: r.user?.name || "Anonymous",
+              rating: r.rating || 5,
+              date: new Date(r.createdAt || Date.now()).toISOString().split('T')[0],
+              comment: r.comment || "",
+              verified: true,
+            }))
+            setReviews(mappedReviews)
+          }
+        } catch (err) {
+          console.error("Failed to fetch product reviews", err)
+        } finally {
+          setReviewsLoading(false)
+        }
+      }
+      fetchReviews()
+    }
   }, [product])
 
   // Initialize user from localStorage
@@ -167,20 +178,43 @@ export default function ProductModal({ product, isOpen, onClose }) {
     setSelectedImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
   }
 
-  const getColorClass = (color) => {
+  const getColorStyle = (color) => {
+    // If it's a valid hex code or css color, just use it inline!
+    const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(color)
+    const normalizedColor = color ? color.toLowerCase() : ""
+
+    // Map of common names to actual CSS colors/tailwind equivalents we might want to manually override
     const colorMap = {
-      black: "bg-black",
-      white: "bg-white border-2 border-gray-300",
-      grey: "bg-gray-500",
-      blue: "bg-blue-500",
-      yellow: "bg-yellow-400",
-      brown: "bg-amber-600",
-      pink: "bg-pink-400",
+      black: "#000000",
+      white: "#FFFFFF",
+      grey: "#6B7280",
+      gray: "#6B7280",
+      blue: "#3B82F6",
+      lightblue: "#93C5FD",
+      darkblue: "#1E3A8A",
+      yellow: "#FBBF24",
+      brown: "#92400E",
+      pink: "#F472B6",
+      red: "#EF4444",
+      green: "#10B981",
+      purple: "#8B5CF6",
+      orange: "#F97316",
     }
-    return colorMap[color] || "bg-gray-400"
+
+    if (isHex) return { backgroundColor: color }
+    if (colorMap[normalizedColor]) return { backgroundColor: colorMap[normalizedColor] }
+
+    // Fallback attempts to use the string directly if it's a valid CSS color name
+    return { backgroundColor: color || "#9CA3AF" } // default grey
   }
 
-  const images = product.images || [product.image]
+  // We handle parsing `images` carefully. Because ProductDetail maps URLs into a flat array of strings,
+  // whereas the homepage featured list leaves the raw object as-is. We should extract URLs strings
+  // if `images` is a backend object.
+  const parsedImages = (product.images && product.images.length > 0)
+    ? product.images.map(img => typeof img === 'object' ? (img.SD || img.HD || img) : img)
+    : [product.image || "/placeholder.svg"]
+
   const colors = product.colors || ["black", "white"]
   const sizes = product.sizes || ["S", "M", "L", "XL"]
   const specifications = product.specifications || {
@@ -221,13 +255,13 @@ export default function ProductModal({ product, isOpen, onClose }) {
               {/* Main Image */}
               <div className="relative bg-gray-50 rounded-xl overflow-hidden">
                 <img
-                  src={images[selectedImageIndex] || "/placeholder.svg"}
+                  src={parsedImages[selectedImageIndex] || "/placeholder.svg"}
                   alt={product.title}
                   className="w-full h-[400px] object-cover"
                 />
 
                 {/* Image Navigation */}
-                {images.length > 1 && (
+                {parsedImages.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
@@ -260,9 +294,9 @@ export default function ProductModal({ product, isOpen, onClose }) {
               </div>
 
               {/* Thumbnail Images */}
-              {images.length > 1 && (
+              {parsedImages.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto">
-                  {images.map((image, index) => (
+                  {parsedImages.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImageIndex(index)}
@@ -301,7 +335,7 @@ export default function ProductModal({ product, isOpen, onClose }) {
                     </div>
                     <span className="text-sm font-semibold">{product.rating}</span>
                   </div>
-                  <span className="text-gray-600 text-sm">({product.reviews || 124} reviews)</span>
+                  <span className="text-gray-600 text-sm">({product.reviews || 0} reviews)</span>
                   {product.isSponsored && (
                     <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">
                       Sponsored
@@ -333,8 +367,8 @@ export default function ProductModal({ product, isOpen, onClose }) {
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
-                      className={`w-10 h-10 rounded-full border-2 transition-colors ${selectedColor === color ? "border-yellow-400 ring-2 ring-yellow-200" : "border-gray-300"
-                        } ${getColorClass(color)}`}
+                      className={`w-10 h-10 rounded-full border-2 transition-colors ${selectedColor === color ? "border-yellow-400 ring-2 ring-yellow-200" : "border-gray-200"}`}
+                      style={getColorStyle(color)}
                       title={color}
                     />
                   ))}
@@ -350,8 +384,8 @@ export default function ProductModal({ product, isOpen, onClose }) {
                       key={size}
                       onClick={() => setSelectedSize(size)}
                       className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${selectedSize === size
-                          ? "border-yellow-400 bg-yellow-50 text-yellow-800"
-                          : "border-gray-300 hover:border-gray-400"
+                        ? "border-yellow-400 bg-yellow-50 text-yellow-800"
+                        : "border-gray-300 hover:border-gray-400"
                         }`}
                     >
                       {size}
@@ -430,12 +464,12 @@ export default function ProductModal({ product, isOpen, onClose }) {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`py-2 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${activeTab === tab
-                            ? "border-yellow-400 text-yellow-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                          ? "border-yellow-400 text-yellow-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
                           }`}
                       >
                         {tab}
-                        {tab === "reviews" && ` (${product.reviews || 124})`}
+                        {tab === "reviews" && ` (${product.reviews || 0})`}
                       </button>
                     ))}
                   </nav>
@@ -469,34 +503,41 @@ export default function ProductModal({ product, isOpen, onClose }) {
 
                   {activeTab === "reviews" && (
                     <div className="space-y-4">
-                      {reviews.map((review) => (
-                        <div key={review.id} className="border-b border-gray-100 pb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-gray-900 text-sm">{review.name}</h4>
-                              {review.verified && (
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                                  <Check className="w-3 h-3" />
-                                  Verified
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-3 h-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                                    }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-xs text-gray-600">{review.date}</span>
-                          </div>
-                          <p className="text-gray-700 text-sm">{review.comment}</p>
+                      {reviewsLoading ? (
+                        <div className="flex justify-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
                         </div>
-                      ))}
+                      ) : reviews.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-4">No reviews yet.</p>
+                      ) : (
+                        reviews.map((review) => (
+                          <div key={review.id} className="border-b border-gray-100 pb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 text-sm">{review.name}</h4>
+                                {review.verified && (
+                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                                    <Check className="w-3 h-3" />
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`w-3 h-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                      }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-xs text-gray-600">{review.date}</span>
+                            </div>
+                            <p className="text-gray-700 text-sm">{review.comment}</p>
+                          </div>
+                        )))}
                     </div>
                   )}
                 </div>
