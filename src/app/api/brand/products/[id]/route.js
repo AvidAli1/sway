@@ -130,9 +130,10 @@ export async function PUT(request, { params }) {
       const currentDiscount = discountPercentage !== null ? parseFloat(discountPercentage) : product.discount;
 
       // Calculate new price based on original price and discount
-      const calculatedPrice = currentOriginalPrice > 0 && currentDiscount > 0
+      let calculatedPrice = currentOriginalPrice > 0 && currentDiscount > 0
         ? currentOriginalPrice - (currentOriginalPrice * currentDiscount / 100)
         : currentOriginalPrice;
+      calculatedPrice = Math.ceil(calculatedPrice / 5) * 5;
 
       updateData.originalPrice = currentOriginalPrice;
       updateData.discount = currentDiscount;

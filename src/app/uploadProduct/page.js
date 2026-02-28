@@ -177,7 +177,8 @@ export default function BrandProductUpload() {
             // Backend expects originalPrice (list price) and price (final price after discount).
             const entered = Number(formData.price) || 0
             const discountPct = Number(formData.discount) || 0
-            const calculatedPrice = Math.round(entered * (1 - discountPct / 100))
+            let calculatedPrice = entered * (1 - discountPct / 100)
+            calculatedPrice = Math.ceil(calculatedPrice / 5) * 5
             fd.append('originalPrice', String(entered))
             fd.append('price', String(calculatedPrice))
             fd.append('currency', 'PKR')
@@ -798,7 +799,8 @@ export default function BrandProductUpload() {
 }
 
 function ProductPreview({ formData }) {
-    const discountedPrice = formData.discount ? formData.price * (1 - formData.discount / 100) : formData.price
+    let discountedPrice = formData.discount ? formData.price * (1 - formData.discount / 100) : formData.price
+    if (discountedPrice) discountedPrice = Math.ceil(Number(discountedPrice) / 5) * 5
 
     return (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -843,7 +845,7 @@ function ProductPreview({ formData }) {
 
                     <div className="flex items-center gap-4">
                         <span className="text-3xl font-bold text-yellow-600">
-                            PKR {discountedPrice ? Math.round(discountedPrice).toLocaleString() : "0"}
+                            PKR {discountedPrice ? discountedPrice.toLocaleString() : "0"}
                         </span>
                         {formData.discount && (
                             <>

@@ -883,11 +883,11 @@ function FilterContent({ filters, brands, categories, colors, seasons, maxAvaila
   const [categorySearch, setCategorySearch] = useState("")
 
   const filteredBrands = brands
-    .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
+    .filter((b) => b && typeof b === 'string' && b.trim() !== "" && b.toLowerCase().includes(brandSearch.toLowerCase()))
     .sort((a, b) => a.localeCompare(b))
 
   const filteredCategories = categories
-    .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
+    .filter((c) => c && typeof c === 'string' && c.trim() !== "" && c.toLowerCase().includes(categorySearch.toLowerCase()))
     .sort((a, b) => a.localeCompare(b))
 
   return (
@@ -966,7 +966,7 @@ function FilterContent({ filters, brands, categories, colors, seasons, maxAvaila
       <div>
         <h3 className="font-semibold mb-3">Seasons</h3>
         <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-          {(seasons || []).map((season) => {
+          {(seasons || []).filter(s => s && typeof s === 'string' && s.trim() !== "").map((season) => {
             const isChecked = filters.seasons.includes(season)
             return (
               <label key={season} className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded group">
@@ -1012,7 +1012,7 @@ function FilterContent({ filters, brands, categories, colors, seasons, maxAvaila
         <h3 className="font-semibold mb-3">Colors</h3>
         <div className="flex flex-wrap gap-3">
           {(() => {
-            const visibleColors = colors;
+            const visibleColors = colors.filter(c => c && typeof c === 'string' && c.trim() !== "");
             if (visibleColors.length === 0) {
               return <p className="text-xs text-gray-500 w-full text-center py-2">No colors found</p>;
             }

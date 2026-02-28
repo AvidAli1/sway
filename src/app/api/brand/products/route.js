@@ -160,9 +160,10 @@ export async function POST(request) {
     const discountPercentage = parseFloat(formData.get('discount')) || 0;
 
     // Calculate price based on original price and discount
-    const calculatedPrice = originalPrice > 0 && discountPercentage > 0
+    let calculatedPrice = originalPrice > 0 && discountPercentage > 0
       ? originalPrice - (originalPrice * discountPercentage / 100)
       : originalPrice;
+    calculatedPrice = Math.ceil(calculatedPrice / 5) * 5;
 
     const productData = {
       name: formData.get('name'),
