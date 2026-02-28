@@ -155,17 +155,17 @@ export async function GET(request) {
           customer = await Customer.findOne({ userId: authResult.user.id });
           if (customer && customer.styleEmbedding && customer.styleEmbedding.length > 0) {
             queryVector = customer.styleEmbedding;
-            console.log(`User (${customer.userId}) has style embedding. Proceeding with Recommender Search...`);
+            // console.log(`User (${customer.userId}) has style embedding. Proceeding with Recommender Search...`);
           } else {
-            console.log(`User (${customer.userId}) authenticated, but NO style embedding exists on profile. Skipping Vector Search.`);
+            // console.log(`User (${customer.userId}) authenticated, but NO style embedding exists on profile. Skipping Vector Search.`);
           }
         } catch (e) { console.error("Customer fetch error", e); }
       }
     }
 
     if (queryVector) {
-      console.log("\n--- USING VECTOR SEARCH ---");
-      console.log(`Type: ${isSemanticSearch ? "Semantic Keyword Search" : "User Profile Recommendation"}`);
+      // console.log("\n--- USING VECTOR SEARCH ---");
+      // console.log(`Type: ${isSemanticSearch ? "Semantic Keyword Search" : "User Profile Recommendation"}`);
       const vectorPipeline = [];
 
       // 1. Vector Search Stage
@@ -231,25 +231,9 @@ export async function GET(request) {
       // Execute Pipeline
       let products = await Product.aggregate(vectorPipeline);
 
-      console.log("\n--- RECOMMENDATION LOAD ---");
-      console.log(`Layer 1 (Seasonal Priority): Current Season is ${currentSeason}`);
-      console.log(`Priority Order:`, seasonPriority);
-      console.log("---");
-      console.log("Layer 2 (Vector Embedding & Similarities):");
-      if (products.length === 0) {
-        console.log(" No vector matches found for the query.");
-      } else {
-        products.forEach((p, index) => {
-          console.log(` ${index + 1}. [${p.season || 'No Season'} - Rank ${p.seasonRank}] ${p.name}`);
-          console.log(`    Cosine Similarity Score: ${p.score ? p.score.toFixed(4) : 'N/A'}`);
-        });
-      }
-      console.log("---------------------------\n");
-
       // --- Backfill Logic: If vector search results < limit, fill with standard sort ---
       if (products.length < limit) {
         const needed = limit - products.length;
-        console.log(`Vector search returned ${products.length} items. Backfilling with ${needed} items.`);
 
         // Create fallback query excluding already found products
         const existingIds = products.map(p => p._id);

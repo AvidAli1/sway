@@ -264,10 +264,10 @@ export default function SwipePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="font-medium hidden sm:block mr-4">Back</span>
-              </Link>
+              </button>
             </div>
 
             <div className="flex-1 flex justify-left sm:justify-left justify-start sm:ml-0">

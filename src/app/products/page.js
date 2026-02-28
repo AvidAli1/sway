@@ -583,10 +583,10 @@ function ProductsPageContent() {
           <div className="flex items-center justify-between h-16">
             {/* Back Button & Logo */}
             <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:block font-medium">Back</span>
-              </Link>
+              </button>
               <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto mt-2" />
             </div>
 

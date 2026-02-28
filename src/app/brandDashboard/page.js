@@ -285,11 +285,11 @@ export default function BrandDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:block font-medium mr-4">Back to Store</span>
                 <span className="sm:hidden">Back</span>
-              </Link>
+              </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Brand Dashboard</h1>
               </div>

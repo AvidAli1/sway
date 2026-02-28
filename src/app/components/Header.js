@@ -3,9 +3,11 @@
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Search, ShoppingCart, Heart, Grid, Layers, User, ChevronDown, LayoutDashboard, LogOut, Menu, X, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useCart } from "../context/CartContext"
 
 export default function Header({ user, onLoginClick, onViewModeChange, viewMode }) {
+  const router = useRouter()
   const { cartCount } = useCart()
   const [searchQuery, setSearchQuery] = useState("")
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
@@ -42,10 +44,10 @@ export default function Header({ user, onLoginClick, onViewModeChange, viewMode 
           {/* Back Button & Logo */}
           <div className="flex items-center gap-6">
             <div className="flex items-center transform translate-y-1">
-              <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors mr-4">
+              <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors mr-4">
                 <ArrowLeft className="w-5 h-5 transform -translate-y-1" />
                 <span className="hidden sm:block font-medium pr-2 pb-2">Back</span>
-              </Link>
+              </button>
               <Link href="/">
                 <img src="/logo2.png" alt="SWAY Logo" className="h-7 w-auto" />
               </Link>

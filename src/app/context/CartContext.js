@@ -14,8 +14,24 @@ export function CartProvider({ children }) {
 
             const token = localStorage.getItem("authToken")
             if (!token) {
-                setCartCount(0)
-                setCartProductIds(new Set())
+                try {
+                    const localCart = localStorage.getItem("cart")
+                    if (localCart) {
+                        const parsed = JSON.parse(localCart)
+                        const items = Array.isArray(parsed) ? parsed : []
+                        const count = items.reduce((acc, item) => acc + (item.quantity || 1), 0)
+                        setCartCount(count)
+
+                        const ids = new Set(items.map(item => item.id || item.product))
+                        setCartProductIds(ids)
+                    } else {
+                        setCartCount(0)
+                        setCartProductIds(new Set())
+                    }
+                } catch (e) {
+                    setCartCount(0)
+                    setCartProductIds(new Set())
+                }
                 return
             }
 
