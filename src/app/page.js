@@ -56,10 +56,10 @@ export default function HomePage() {
   const profileDropdownRef = useRef(null)
 
   // Intersection Observer refs for different sections
-  const [heroRef, heroInView] = useInView(0.2)
-  const [promotionsRef, promotionsInView] = useInView(0.3)
-  const [productsRef, productsInView] = useInView(0.2)
-  const [ctaRef, ctaInView] = useInView(0.3)
+  const [heroRef, heroInView] = useInView(0.1)
+  const [promotionsRef, promotionsInView] = useInView(0.1)
+  const [productsRef, productsInView] = useInView(0.05)
+  const [ctaRef, ctaInView] = useInView(0.1)
 
   useEffect(() => {
     // Only animate header immediately on load
