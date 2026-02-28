@@ -492,30 +492,6 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
         </div>
 
-        {/* Animated Social Media Icons - Left Side */}
-        <div
-          className={`absolute left-4 top-1/2 transform -translate-y-1/2 z-20 hidden lg:flex flex-col space-y-4 transition-all duration-1200 ease-out ${heroInView ? "translate-x-0 opacity-100" : "-translate-x-20 opacity-0"
-            }`}
-        >
-          {[
-            { label: "IG", delay: "delay-200" },
-            { label: "X", delay: "delay-300", isX: true },
-            { label: "FB", delay: "delay-400" },
-            { label: "LI", delay: "delay-500" },
-          ].map((social, index) => (
-            <div
-              key={social.label}
-              className={`w-12 h-12 ${social.isX ? "bg-yellow-400" : "bg-white/90"} rounded-full flex items-center justify-center hover:bg-yellow-400 transition-all duration-300 cursor-pointer transform hover:scale-110 ${heroInView ? social.delay : ""}`}
-            >
-              {social.isX ? (
-                <X className="w-5 h-5 text-black" />
-              ) : (
-                <span className="text-black font-bold">{social.label}</span>
-              )}
-            </div>
-          ))}
-        </div>
-
         {/* Animated Hero Content */}
         <div
           className={`relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full transition-all duration-1000 ease-out ${heroInView ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
