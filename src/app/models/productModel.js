@@ -178,6 +178,12 @@ const productSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+// Add compound indexes for the most common query patterns on the products page
+productSchema.index({ status: 1, inStock: 1 });
+productSchema.index({ status: 1, inStock: 1, category: 1 });
+productSchema.index({ brand: 1 });
+productSchema.index({ status: 1, inStock: 1, createdAt: -1 });
+
 const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 
 export default Product;

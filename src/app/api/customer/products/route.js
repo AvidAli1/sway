@@ -303,20 +303,22 @@ export async function GET(request) {
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
-      // Get filters metadata
-      const categories = await Product.distinct('category', { status: 'active' });
-      const subCategories = category ?
-        await Product.distinct('subCategory', { status: 'active', category }) :
-        await Product.distinct('subCategory', { status: 'active' });
-      const distinctBrandIds = await Product.distinct('brand', { status: 'active' });
+      // Get filters metadata concurrently
+      const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
+        Product.distinct('category', { status: 'active' }),
+        category
+          ? Product.distinct('subCategory', { status: 'active', category })
+          : Product.distinct('subCategory', { status: 'active' }),
+        Product.distinct('brand', { status: 'active' }),
+        Product.distinct('colors', { status: 'active' }),
+        Product.distinct('season', { status: 'active' }),
+        Product.aggregate([
+          { $match: { status: 'active', inStock: true } },
+          { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
+        ])
+      ]);
       const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
       const brands = brandDocs.map(b => b.name).sort();
-      const colors = await Product.distinct('colors', { status: 'active' });
-      const seasons = await Product.distinct('season', { status: 'active' });
-      const priceRange = await Product.aggregate([
-        { $match: { status: 'active', inStock: true } },
-        { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
-      ]);
 
       return NextResponse.json({
         success: true,
@@ -413,25 +415,24 @@ export async function GET(request) {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    // Get filter options for UI
-    const categories = await Product.distinct('category', { status: 'active' });
-    const subCategories = category ?
-      await Product.distinct('subCategory', { status: 'active', category }) :
-      await Product.distinct('subCategory', { status: 'active' });
-    const distinctBrandIds = await Product.distinct('brand', { status: 'active' });
+    // Get filter options for UI in parallel
+    const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
+      Product.distinct('category', { status: 'active' }),
+      category
+        ? Product.distinct('subCategory', { status: 'active', category })
+        : Product.distinct('subCategory', { status: 'active' }),
+      Product.distinct('brand', { status: 'active' }),
+      Product.distinct('colors', { status: 'active' }),
+      Product.distinct('season', { status: 'active' }),
+      Product.aggregate([
+        { $match: { status: 'active', inStock: true } },
+        { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
+      ])
+    ]);
+
     // Fetch actual Brand documents to get names
     const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
     const brands = brandDocs.map(b => b.name).sort();
-
-    // Get distinct colors
-    const colors = await Product.distinct('colors', { status: 'active' });
-    const seasons = await Product.distinct('season', { status: 'active' });
-
-    // Get price range
-    const priceRange = await Product.aggregate([
-      { $match: { status: 'active', inStock: true } },
-      { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
-    ]);
 
     return NextResponse.json({
       success: true,

@@ -37,29 +37,30 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Get related products (same category, different product)
-    const relatedProducts = await Product.find({
-      _id: { $ne: id },
-      category: product.category,
-      status: 'active',
-      inStock: true
-    })
-      .populate('brand', 'name businessEmail logo')
-      .limit(8)
-      .select('name price originalPrice discount thumbnail images ratings numReviews slug')
-      .lean();
+    // Get related and similar products in parallel
+    const [relatedProducts, similarProducts] = await Promise.all([
+      Product.find({
+        _id: { $ne: id },
+        category: product.category,
+        status: 'active',
+        inStock: true
+      })
+        .populate('brand', 'name businessEmail logo')
+        .limit(8)
+        .select('name price originalPrice discount thumbnail images ratings numReviews slug')
+        .lean(),
 
-    // Get similar products (same brand, different product)
-    const similarProducts = await Product.find({
-      _id: { $ne: id },
-      brand: product.brand._id,
-      status: 'active',
-      inStock: true
-    })
-      .populate('brand', 'name businessEmail logo')
-      .limit(6)
-      .select('name price originalPrice discount thumbnail images ratings numReviews slug')
-      .lean();
+      Product.find({
+        _id: { $ne: id },
+        brand: product.brand._id,
+        status: 'active',
+        inStock: true
+      })
+        .populate('brand', 'name businessEmail logo')
+        .limit(6)
+        .select('name price originalPrice discount thumbnail images ratings numReviews slug')
+        .lean()
+    ]);
 
     return NextResponse.json({
       success: true,
