@@ -1159,13 +1159,13 @@ function ProductCard({ product, viewMode, isWishlisted, onAddToCart, onToggleWis
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {product.isSponsored && (
-              <span className="bg-yellow-400 text-black px-2 py-1 rounded-full text-xs font-semibold">Sponsored</span>
+              <span className="bg-yellow-400 text-black px-2 py-1 rounded-full text-xs font-semibold shadow-sm">Sponsored</span>
             )}
             {!product.inStock && (
-              <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">Out of Stock</span>
+              <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-sm">Out of Stock</span>
             )}
             {product.originalPrice > product.price && (
-              <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+              <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-sm">
                 {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
               </span>
             )}
