@@ -43,7 +43,7 @@ function ProductsPageContent() {
 
   const [wishlist, setWishlist] = useState(new Set())
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1)
-  const [productsPerPage] = useState(50)
+  const [productsPerPage] = useState(20)
   const [categoriesList, setCategoriesList] = useState([])
   const [subCategoriesList, setSubCategoriesList] = useState([])
   const [brandsList, setBrandsList] = useState([])
@@ -214,6 +214,7 @@ function ProductsPageContent() {
         isSponsored: !!p.isFeatured,
         tags: p.tags || [],
         score: p.score,
+        virtualTryOnImage: p.virtualTryOnImage,
       })) : []
 
       if (shouldReplace) {
@@ -1157,7 +1158,12 @@ function ProductCard({ product, viewMode, isWishlisted, onAddToCart, onToggleWis
           />
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
+            {product.virtualTryOnImage && (
+              <div className="vton-badge-container shadow-sm">
+                <div className="vton-badge-inner">VTON</div>
+              </div>
+            )}
             {product.isSponsored && (
               <span className="bg-yellow-400 text-black px-2 py-1 rounded-full text-xs font-semibold shadow-sm">Sponsored</span>
             )}
