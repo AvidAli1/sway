@@ -287,10 +287,14 @@ export default function VirtualTryOnPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Upload Section */}
                         <div className="bg-white rounded-2xl shadow-lg p-8">
-                            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
                                 <Camera className="w-6 h-6 text-yellow-500" />
                                 Upload Your Photo
                             </h3>
+                            <div className="mb-6 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm flex items-start gap-2 border border-blue-100">
+                                <span className="text-blue-500 mt-0.5">ℹ️</span>
+                                <p>For the best virtual try-on results, please upload <strong>close-up shots</strong> with a <strong>minimal, clean background</strong>.</p>
+                            </div>
 
                             {!imagePreview ? (
                                 <div
@@ -488,11 +492,11 @@ export default function VirtualTryOnPage() {
                         </div>
                         <div className="flex items-start gap-2">
                             <span className="text-yellow-500">👤</span>
-                            <p>Make sure your full body is visible in the frame</p>
+                            <p>Use close-up shots rather than full body shots</p>
                         </div>
                         <div className="flex items-start gap-2">
                             <span className="text-green-500">✨</span>
-                            <p>Avoid busy backgrounds for better results</p>
+                            <p>Ensure you have a minimal, clean background</p>
                         </div>
                     </div>
                 </div>
