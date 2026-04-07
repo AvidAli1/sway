@@ -162,7 +162,7 @@ export default function VirtualTryOnPage() {
             }, 1200)
 
             // 6. Call API
-            const response = await fetch('https://nonincorporated-unchristian-leisa.ngrok-free.dev/generate-vton', {
+            const response = await fetch('/api/vton/generate', {
                 method: 'POST',
                 body: fd,
             })
