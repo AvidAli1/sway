@@ -12,13 +12,22 @@ import {
   Gift,
   FileText,
   CheckCircle,
+  Lock,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { loadStripe } from "@stripe/stripe-js"
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import ToastNotification from "../components/ToastNotification"
 
-export default function CheckoutPage() {
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+
+
+function CheckoutInner() {
   const router = useRouter()
+  const stripe = useStripe()
+  const elements = useElements()
+
   const [user, setUser] = useState(null)
   const [cartItems, setCartItems] = useState([])
   const [cartData, setCartData] = useState(null)
@@ -32,7 +41,7 @@ export default function CheckoutPage() {
 
   // Form state
   const [useSavedAddress, setUseSavedAddress] = useState(false)
-  const [savedAddresses, setSavedAddresses] = useState([]) // Empty for now
+  const [savedAddresses, setSavedAddresses] = useState([])
   const [selectedAddressId, setSelectedAddressId] = useState("")
   const [formData, setFormData] = useState({
     firstName: "",
@@ -48,6 +57,7 @@ export default function CheckoutPage() {
     addressType: "home",
   })
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery")
+  const [cardError, setCardError] = useState("")
   const [notes, setNotes] = useState("")
   const [isGift, setIsGift] = useState(false)
   const [giftMessage, setGiftMessage] = useState("")
@@ -109,7 +119,6 @@ export default function CheckoutPage() {
                   })
                   setCartItems(transformed)
 
-                  // Pre-fill form with user data if available
                   if (user) {
                     setFormData((prev) => ({
                       ...prev,
@@ -120,14 +129,12 @@ export default function CheckoutPage() {
                     }))
                   }
                 } else {
-                  // Cart is empty, redirect to cart page
                   router.push("/cart")
                 }
               }
             }
           }
         } else {
-          // Guest user - load from localStorage
           const localCart = typeof window !== "undefined" ? localStorage.getItem("cart") : null
           if (localCart) {
             const parsed = JSON.parse(localCart)
@@ -237,10 +244,7 @@ export default function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!validateForm()) {
-      return
-    }
-
+    if (!validateForm()) return
     if (cartItems.length === 0) {
       showToast("Your cart is empty", "error")
       return
@@ -249,7 +253,13 @@ export default function CheckoutPage() {
     setSubmitting(true)
 
     try {
-      // Prepare order items from cart
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+      if (!token && user) {
+        showToast("Please log in to place an order", "error")
+        setSubmitting(false)
+        return
+      }
+
       const items = cartItems.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
@@ -257,7 +267,6 @@ export default function CheckoutPage() {
         color: item.selectedColor || null,
       }))
 
-      // Prepare shipping address
       const shippingAddress = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -272,18 +281,76 @@ export default function CheckoutPage() {
         addressType: formData.addressType,
       }
 
-      // Prepare payment info
-      const payment = {
-        method: paymentMethod,
+      let paymentInfo = { method: paymentMethod }
+
+      // Handle Stripe card payment
+      if (paymentMethod === "credit_card") {
+        if (!stripe || !elements) {
+          showToast("Payment system not ready. Please refresh and try again.", "error")
+          setSubmitting(false)
+          return
+        }
+
+        const cardElement = elements.getElement(CardNumberElement)
+        if (!cardElement) {
+          showToast("Please enter your card details", "error")
+          setSubmitting(false)
+          return
+        }
+
+        // Step 1: Create PaymentIntent on the server
+        const intentRes = await fetch("/api/payment/create-intent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ amount: estimatedTotal }),
+        })
+
+        const intentData = await intentRes.json()
+        if (!intentRes.ok || !intentData.clientSecret) {
+          showToast(intentData.error || "Failed to initialize payment", "error")
+          setSubmitting(false)
+          return
+        }
+
+        // Step 2: Confirm card payment with Stripe.js (no redirect)
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+          intentData.clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: `${formData.firstName} ${formData.lastName}`,
+                email: formData.email,
+                phone: formData.phone,
+              },
+            },
+          }
+        )
+
+        if (stripeError) {
+          showToast(stripeError.message || "Payment failed. Please try again.", "error")
+          setSubmitting(false)
+          return
+        }
+
+        if (paymentIntent.status !== "succeeded") {
+          showToast("Payment was not completed. Please try again.", "error")
+          setSubmitting(false)
+          return
+        }
+
+        paymentInfo = {
+          method: "credit_card",
+          transactionId: paymentIntent.id,
+          paymentGateway: "stripe",
+          status: "completed",
+        }
       }
 
-      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
-      if (!token && user) {
-        showToast("Please log in to place an order", "error")
-        setSubmitting(false)
-        return
-      }
-
+      // Step 3: Create order (backend re-verifies the PaymentIntent for card payments)
       const res = await fetch("/api/customer/orders", {
         method: "POST",
         headers: {
@@ -293,7 +360,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items,
           shippingAddress,
-          payment,
+          payment: paymentInfo,
           notes: notes.trim() || "",
           isGift: isGift || false,
           giftMessage: isGift ? giftMessage.trim() : "",
@@ -304,24 +371,10 @@ export default function CheckoutPage() {
 
       if (res.ok && data.success) {
         showToast("Order placed successfully!", "info")
-        // Clear cart
-        if (user && user.role === "customer") {
-          // Clear cart via API
-          try {
-            await fetch("/api/customer/cart", {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            })
-          } catch (e) {
-            console.error("Failed to clear cart", e)
-          }
-        } else {
-          // Clear localStorage for guest users
+        // Clear guest localStorage cart if applicable
+        if (!user || user.role !== "customer") {
           localStorage.setItem("cart", JSON.stringify([]))
         }
-        // Redirect to order confirmation or dashboard
         setTimeout(() => {
           router.push("/customerDashboard")
         }, 1500)
@@ -419,7 +472,6 @@ export default function CheckoutPage() {
                     />
                   </button>
 
-                  {/* Dropdown Menu */}
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                       <div className="px-4 py-2 border-b border-gray-200">
@@ -476,7 +528,6 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-bold text-gray-900">Shipping Address</h2>
               </div>
 
-              {/* Saved Addresses Toggle - Show even if empty for future implementation */}
               <div className="mb-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -657,7 +708,7 @@ export default function CheckoutPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
                     >
                       <option value="home">Home</option>
-                      <option value="work">Work</option>
+                      <option value="office">Work / Office</option>
                       <option value="other">Other</option>
                     </select>
                   </div>
@@ -671,21 +722,179 @@ export default function CheckoutPage() {
                 <CreditCard className="w-5 h-5 text-yellow-600" />
                 <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
               </div>
+
               <div className="space-y-3">
-                <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-yellow-400 transition-colors">
+                {/* Cash on Delivery */}
+                <label
+                  className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    paymentMethod === "cash_on_delivery"
+                      ? "border-yellow-400 bg-yellow-50 shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="cash_on_delivery"
                     checked={paymentMethod === "cash_on_delivery"}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500"
+                    className="mt-0.5 w-4 h-4 text-yellow-500 border-gray-300 focus:ring-yellow-400"
                   />
-                  <div>
-                    <div className="font-medium text-gray-900">Cash on Delivery</div>
-                    <div className="text-sm text-gray-600">Pay when you receive your order</div>
+                  {/* COD icon */}
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    paymentMethod === "cash_on_delivery" ? "bg-yellow-400" : "bg-gray-100"
+                  }`}>
+                    <svg className={`w-5 h-5 ${paymentMethod === "cash_on_delivery" ? "text-black" : "text-gray-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
                   </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Cash on Delivery</div>
+                    <div className="text-sm text-gray-500 mt-0.5">Pay in cash when your order arrives</div>
+                  </div>
+                  {paymentMethod === "cash_on_delivery" && (
+                    <div className="ml-auto flex-shrink-0">
+                      <CheckCircle className="w-5 h-5 text-yellow-500" />
+                    </div>
+                  )}
                 </label>
+
+                {/* Credit / Debit Card */}
+                <label
+                  className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                    paymentMethod === "credit_card"
+                      ? "border-yellow-400 bg-yellow-50 shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="credit_card"
+                    checked={paymentMethod === "credit_card"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="mt-0.5 w-4 h-4 text-yellow-500 border-gray-300 focus:ring-yellow-400"
+                  />
+                  {/* Card icon */}
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    paymentMethod === "credit_card" ? "bg-yellow-400" : "bg-gray-100"
+                  }`}>
+                    <CreditCard className={`w-5 h-5 ${paymentMethod === "credit_card" ? "text-black" : "text-gray-500"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      Credit / Debit Card
+                    </div>
+                    <div className="text-sm text-gray-500 mt-0.5">Visa, Mastercard, Amex · Powered by Stripe</div>
+                  </div>
+                  {paymentMethod === "credit_card" && (
+                    <div className="ml-auto flex-shrink-0">
+                      <CheckCircle className="w-5 h-5 text-yellow-500" />
+                    </div>
+                  )}
+                </label>
+
+                {/* Stripe Card Element */}
+                {paymentMethod === "credit_card" && (
+                  <div className="rounded-xl border-2 border-yellow-200 bg-gray-50 overflow-hidden">
+                    {/* Card form header */}
+                    <div className="px-5 py-3 bg-white border-b border-gray-100 flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Enter card details</span>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <Lock className="w-3 h-3" />
+                        <span>SSL encrypted</span>
+                      </div>
+                    </div>
+
+                    {/* Card input area */}
+                    <div className="p-5 space-y-4">
+                      {/* Card Number */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Card Number</label>
+                        <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3.5 focus-within:border-yellow-400 transition-colors">
+                          <CardNumberElement
+                            options={{
+                              style: {
+                                base: {
+                                  color: "#111827",
+                                  fontFamily: "inherit",
+                                  fontSmoothing: "antialiased",
+                                  fontSize: "16px",
+                                  "::placeholder": { color: "#9CA3AF" },
+                                  iconColor: "#6B7280",
+                                },
+                                invalid: { color: "#EF4444", iconColor: "#EF4444" },
+                              },
+                              showIcon: true,
+                            }}
+                            onChange={(e) => setCardError(e.error?.message || "")}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Expiry + CVC side by side */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Expiry Date</label>
+                          <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3.5 focus-within:border-yellow-400 transition-colors">
+                            <CardExpiryElement
+                              options={{
+                                style: {
+                                  base: {
+                                    color: "#111827",
+                                    fontFamily: "inherit",
+                                    fontSmoothing: "antialiased",
+                                    fontSize: "16px",
+                                    "::placeholder": { color: "#9CA3AF" },
+                                  },
+                                  invalid: { color: "#EF4444" },
+                                },
+                              }}
+                              onChange={(e) => setCardError(e.error?.message || "")}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">CVC</label>
+                          <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3.5 focus-within:border-yellow-400 transition-colors">
+                            <CardCvcElement
+                              options={{
+                                style: {
+                                  base: {
+                                    color: "#111827",
+                                    fontFamily: "inherit",
+                                    fontSmoothing: "antialiased",
+                                    fontSize: "16px",
+                                    "::placeholder": { color: "#9CA3AF" },
+                                  },
+                                  invalid: { color: "#EF4444" },
+                                },
+                              }}
+                              onChange={(e) => setCardError(e.error?.message || "")}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {cardError && (
+                        <p className="text-sm text-red-600 flex items-center gap-1.5">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {cardError}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Stripe branding footer */}
+                    <div className="px-5 py-2.5 bg-white border-t border-gray-100 flex items-center justify-center gap-2">
+                      <svg className="h-4" viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a10 10 0 01-4.56 1c-4.01 0-6.83-2.5-6.83-7.48 0-4.19 2.39-7.52 6.3-7.52 3.92 0 5.96 3.28 5.96 7.5 0 .4-.04 1.26-.06 1.58zm-5.92-5.62c-1.03 0-2.17.73-2.17 2.58h4.25c0-1.85-1.07-2.58-2.08-2.58zM40.95 20.3c-1.44 0-2.32-.6-2.9-1.04l-.02 4.63-4.12.87V6.27h3.76l.08 1.02a4.7 4.7 0 013.23-1.29c2.9 0 5.62 2.6 5.62 7.4 0 5.23-2.7 6.9-5.65 6.9zm-.96-10.49c-.97 0-1.54.34-1.97.81l.02 6.12c.4.44.98.78 1.95.78 1.52 0 2.54-1.65 2.54-3.87 0-2.15-1.05-3.84-2.54-3.84zM28.24 5.07a2.13 2.13 0 110-4.27 2.13 2.13 0 010 4.27zm-2.07 15.22V6.27h4.12v14.02h-4.12zM21.95 20.29c-1.97 0-3.15-.66-4.34-1.88l-.04 1.59H13.8V.1l4.1-.87.01 6.43a4.88 4.88 0 013.14-1.15c3.26 0 5.62 2.65 5.62 7.26 0 5.14-2.33 6.52-4.72 6.52zm-.9-10.59c-.9 0-1.51.33-1.96.78l.01 6.26c.41.46 1.01.79 1.95.79 1.5 0 2.5-1.56 2.5-3.92 0-2.28-1.01-3.91-2.5-3.91zM8.34 17.7c1.13 0 2.5-.38 2.5-1.71 0-1.46-2.05-1.82-3.96-2.82-2.14-1.12-3.35-2.62-3.35-4.86C3.53 5.1 5.98 3.6 9.21 3.6c1.63 0 3.26.37 4.57 1.08V8.5c-1.22-.72-2.74-1.2-4.26-1.2-1.22 0-2.35.4-2.35 1.57 0 1.31 1.62 1.69 3.35 2.55 2.33 1.17 3.97 2.59 3.97 5.17 0 3.4-2.73 4.98-6.1 4.98a12.07 12.07 0 01-5.09-1.1v-3.77c1.33.82 3.28 1.4 5.04 1.4z" fill="#635BFF"/>
+                      </svg>
+                      <span className="text-xs text-gray-400">Your payment info is never stored on our servers</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -802,21 +1011,28 @@ export default function CheckoutPage() {
               {/* Place Order Button */}
               <button
                 type="submit"
-                disabled={submitting || cartItems.length === 0}
+                disabled={submitting || cartItems.length === 0 || (paymentMethod === "credit_card" && !stripe)}
                 className="w-full mt-6 bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                    <span>Placing Order...</span>
+                    <span>{paymentMethod === "credit_card" ? "Processing Payment..." : "Placing Order..."}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    <span>Place Order</span>
+                    <span>{paymentMethod === "credit_card" ? "Pay & Place Order" : "Place Order"}</span>
                   </>
                 )}
               </button>
+
+              {paymentMethod === "credit_card" && (
+                <p className="mt-3 text-xs text-gray-500 text-center flex items-center justify-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Your payment is encrypted and secure
+                </p>
+              )}
             </div>
           </div>
         </form>
@@ -833,3 +1049,10 @@ export default function CheckoutPage() {
   )
 }
 
+export default function CheckoutPage() {
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutInner />
+    </Elements>
+  )
+}

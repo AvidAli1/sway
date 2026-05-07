@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
 import connectToDatabase from '@/utils/dbConnect';
 import Order from '@/app/models/orderModel';
 import Product from '@/app/models/productModel';
 import Customer from '@/app/models/customerModel';
+import Cart from '@/app/models/cartModel';
 import { authMiddleware } from '@/utils/authMiddleware';
 import mongoose from 'mongoose';
 
@@ -55,6 +57,37 @@ export async function POST(request) {
       { error: 'Payment method is required' },
       { status: 400 }
     );
+  }
+
+  // Verify Stripe payment for card-based methods before touching the DB
+  if (payment.method === 'credit_card' || payment.method === 'debit_card') {
+    if (!payment.transactionId) {
+      return NextResponse.json(
+        { error: 'Payment transaction ID is required for card payments' },
+        { status: 400 }
+      );
+    }
+    try {
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const paymentIntent = await stripe.paymentIntents.retrieve(payment.transactionId);
+
+      if (paymentIntent.status !== 'succeeded') {
+        return NextResponse.json(
+          { error: 'Payment has not been completed. Please try again.' },
+          { status: 400 }
+        );
+      }
+
+      // Stamp verified fields onto the payment object
+      payment.status = 'completed';
+      payment.paymentGateway = 'stripe';
+    } catch (stripeError) {
+      console.error('Stripe verification error:', stripeError);
+      return NextResponse.json(
+        { error: 'Payment verification failed. Please contact support.' },
+        { status: 400 }
+      );
+    }
   }
 
   // Retry loop for transaction operations
@@ -183,9 +216,10 @@ export async function POST(request) {
         shippingAddress,
         payment: {
           method: payment.method,
-          status: payment.method === 'cash_on_delivery' ? 'pending' : payment.status || 'pending',
+          status: payment.status || 'pending',
           transactionId: payment.transactionId,
           paymentGateway: payment.paymentGateway,
+          paidAt: payment.status === 'completed' ? new Date() : undefined,
         },
         notes: {
           customer: notes || '',
@@ -217,6 +251,16 @@ export async function POST(request) {
       // Commit transaction
       await session.commitTransaction();
       session.endSession();
+
+      // Clear the customer's cart after a successful order (outside transaction — non-critical)
+      try {
+        const cart = await Cart.findOne({ customer: user.id, status: 'active' });
+        if (cart) {
+          await cart.convertToOrder(order._id);
+        }
+      } catch (cartError) {
+        console.error('Error clearing cart after order:', cartError);
+      }
 
       // Populate order for response
       await order.populate('customer', 'name email phone');
