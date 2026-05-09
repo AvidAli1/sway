@@ -786,8 +786,8 @@ function ProductsPageContent() {
                   )}
                 </>
               ) : productsLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                  {[...Array(6)].map((_, i) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4 w-full">
+                  {[...Array(8)].map((_, i) => (
                     <div key={i} className="animate-pulse bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
                       <div className="h-72 bg-gray-200"></div>
                       <div className="p-5 flex flex-col flex-1 relative">

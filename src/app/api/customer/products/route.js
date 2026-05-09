@@ -303,22 +303,34 @@ export async function GET(request) {
       const hasNextPage = page < totalPages;
       const hasPrevPage = page > 1;
 
-      // Get filters metadata concurrently
-      const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
-        Product.distinct('category', { status: 'active' }),
-        category
-          ? Product.distinct('subCategory', { status: 'active', category })
-          : Product.distinct('subCategory', { status: 'active' }),
-        Product.distinct('brand', { status: 'active' }),
-        Product.distinct('colors', { status: 'active' }),
-        Product.distinct('season', { status: 'active' }),
-        Product.aggregate([
-          { $match: { status: 'active', inStock: true } },
-          { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
-        ])
-      ]);
-      const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
-      const brands = brandDocs.map(b => b.name).sort();
+      // Get filters metadata concurrently (ONLY ON FIRST PAGE TO OPTIMIZE INFINITE SCROLL)
+      let filtersData = {};
+      if (page === 1) {
+        const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
+          Product.distinct('category', { status: 'active' }),
+          category
+            ? Product.distinct('subCategory', { status: 'active', category })
+            : Product.distinct('subCategory', { status: 'active' }),
+          Product.distinct('brand', { status: 'active' }),
+          Product.distinct('colors', { status: 'active' }),
+          Product.distinct('season', { status: 'active' }),
+          Product.aggregate([
+            { $match: { status: 'active', inStock: true } },
+            { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
+          ])
+        ]);
+        const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
+        const brands = brandDocs.map(b => b.name).sort();
+        
+        filtersData = {
+          categories,
+          subCategories,
+          brands,
+          colors,
+          seasons,
+          priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
+        };
+      }
 
       return NextResponse.json({
         success: true,
@@ -331,14 +343,7 @@ export async function GET(request) {
           hasPrevPage,
           limit
         },
-        filters: {
-          categories,
-          subCategories,
-          brands,
-          colors,
-          seasons,
-          priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
-        }
+        filters: filtersData
       });
     }
     // --------------------------------------------------
@@ -415,24 +420,36 @@ export async function GET(request) {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    // Get filter options for UI in parallel
-    const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
-      Product.distinct('category', { status: 'active' }),
-      category
-        ? Product.distinct('subCategory', { status: 'active', category })
-        : Product.distinct('subCategory', { status: 'active' }),
-      Product.distinct('brand', { status: 'active' }),
-      Product.distinct('colors', { status: 'active' }),
-      Product.distinct('season', { status: 'active' }),
-      Product.aggregate([
-        { $match: { status: 'active', inStock: true } },
-        { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
-      ])
-    ]);
+    // Get filter options for UI in parallel (ONLY ON FIRST PAGE TO OPTIMIZE INFINITE SCROLL)
+    let filtersData = {};
+    if (page === 1) {
+      const [categories, subCategories, distinctBrandIds, colors, seasons, priceRange] = await Promise.all([
+        Product.distinct('category', { status: 'active' }),
+        category
+          ? Product.distinct('subCategory', { status: 'active', category })
+          : Product.distinct('subCategory', { status: 'active' }),
+        Product.distinct('brand', { status: 'active' }),
+        Product.distinct('colors', { status: 'active' }),
+        Product.distinct('season', { status: 'active' }),
+        Product.aggregate([
+          { $match: { status: 'active', inStock: true } },
+          { $group: { _id: null, minPrice: { $min: '$price' }, maxPrice: { $max: '$price' } } }
+        ])
+      ]);
 
-    // Fetch actual Brand documents to get names
-    const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
-    const brands = brandDocs.map(b => b.name).sort();
+      // Fetch actual Brand documents to get names
+      const brandDocs = await Brand.find({ _id: { $in: distinctBrandIds } }).select('name').lean();
+      const brands = brandDocs.map(b => b.name).sort();
+
+      filtersData = {
+        categories,
+        subCategories,
+        brands,
+        colors,
+        seasons,
+        priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
+      };
+    }
 
     return NextResponse.json({
       success: true,
@@ -445,14 +462,7 @@ export async function GET(request) {
         hasPrevPage,
         limit
       },
-      filters: {
-        categories,
-        subCategories,
-        brands,
-        colors,
-        seasons,
-        priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
-      }
+      filters: filtersData
     });
 
   } catch (error) {

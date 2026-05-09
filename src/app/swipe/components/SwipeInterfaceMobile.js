@@ -307,8 +307,8 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
                     onMouseLeave={handleTouchEnd}
                 >
                     {/* Main Product Image */}
-                    {/* Main Product Image */}
                     <img
+                        key={currentProduct.id}
                         src={currentProduct.image || "/placeholder.svg"}
                         alt={currentProduct.title}
                         className="w-full h-full object-cover pointer-events-none"

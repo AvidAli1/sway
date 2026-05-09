@@ -213,6 +213,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
                 >
                     <div className="relative aspect-square bg-gray-100">
                         <img
+                            key={currentProduct.id}
                             src={currentProduct.image || "/placeholder.svg"}
                             alt={currentProduct.title}
                             className="w-full h-full object-cover pointer-events-none"
