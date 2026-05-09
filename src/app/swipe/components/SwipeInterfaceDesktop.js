@@ -13,15 +13,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
 
     const currentProduct = products[currentIndex]
 
-    // If no more products, show end state
-    if (!currentProduct) {
-        return (
-            <div className="text-center py-16 h-full flex flex-col justify-center items-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No more products!</h3>
-                <p className="text-gray-600">You've seen all available products.</p>
-            </div>
-        )
-    }
+
 
     const handleTouchStart = (e) => {
         if (isAnimating) return
@@ -158,6 +150,16 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
 
     const { color: swipeColor, opacity: swipeOpacity } = getSwipeFeedback()
 
+    // If no more products, show end state
+    if (!currentProduct) {
+        return (
+            <div className="text-center py-16 h-full flex flex-col justify-center items-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No more products!</h3>
+                <p className="text-gray-600">You've seen all available products.</p>
+            </div>
+        )
+    }
+
     return (
         <div className="relative h-full w-full flex flex-col">
             {/* Top Indicators */}
@@ -207,8 +209,8 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
                     </div>
 
                     <div className="p-4 min-[1600px]:p-6">
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{currentProduct.title}</h3>
+                        <div className="flex justify-between items-start mb-2 gap-2">
+                            <h3 className="font-bold text-lg text-gray-900 truncate flex-1" title={currentProduct.title}>{currentProduct.title}</h3>
                             <div className="text-right">
                                 <p className="font-bold text-lg text-black">PKR {currentProduct.price.toLocaleString()}</p>
                                 {currentProduct.originalPrice > currentProduct.price && (
