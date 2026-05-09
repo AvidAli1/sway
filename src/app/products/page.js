@@ -36,8 +36,19 @@ function ProductsPageContent() {
   const [toastVisible, setToastVisible] = useState(false)
   const [toastType, setToastType] = useState("info")
   const [viewMode, setViewMode] = useState("grid") // 'grid' or 'list'
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("")
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || "")
+  const [sortBy, setSortBy] = useState(() => {
+    if (searchParams.get('featured') === 'true') return 'featured'
+    const sort = searchParams.get('sortBy')
+    const order = searchParams.get('sortOrder')
+    if (sort === 'price' && order === 'asc') return 'price-low'
+    if (sort === 'price' && order === 'desc') return 'price-high'
+    if (sort === 'createdAt') return 'newest'
+    if (sort === 'ratings') return 'rating'
+    if (sort === 'numReviews') return 'popular'
+    if (sort === 'recommended') return 'recommended'
+    return 'newest'
+  })
   const [showFilters, setShowFilters] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
@@ -68,22 +79,7 @@ function ProductsPageContent() {
     inStock: searchParams.get('inStock') === 'true',
   })
 
-  useEffect(() => {
-    // Initial sync for search/sort
-    if (searchParams.get('search')) setSearchQuery(searchParams.get('search'))
-    if (searchParams.get('featured') === 'true') {
-      setSortBy('featured')
-    } else if (searchParams.get('sortBy')) {
-      const sort = searchParams.get('sortBy')
-      const order = searchParams.get('sortOrder')
-      if (sort === 'price' && order === 'asc') setSortBy('price-low')
-      else if (sort === 'price' && order === 'desc') setSortBy('price-high')
-      else if (sort === 'createdAt') setSortBy('newest')
-      else if (sort === 'ratings') setSortBy('rating')
-      else if (sort === 'numReviews') setSortBy('popular')
-      else if (sort === 'recommended') setSortBy('recommended')
-    }
-  }, [searchParams])
+
 
   // Auth & Wishlist Check
   useEffect(() => {
