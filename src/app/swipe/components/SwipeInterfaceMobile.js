@@ -225,14 +225,8 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
             onReachEnd();
         }
 
-        if (currentIndex < products.length - 1) {
+        if (currentIndex < products.length) {
             setCurrentIndex(prev => prev + 1)
-        } else {
-            // If strictly infinite, we might not want to loop, or we loop back if no more data.
-            // For now, loop back is existing behavior, but with infinite scroll it might be weird.
-            // But let's keep it safe: if we have more data coming, we won't hit else.
-            // If we hit else, it means we ran out of data even after fetch attempts.
-            setCurrentIndex(0)
         }
 
         // Reset card styling for next item

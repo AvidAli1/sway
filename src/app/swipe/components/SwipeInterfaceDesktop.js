@@ -115,10 +115,8 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
             onReachEnd();
         }
 
-        if (currentIndex < products.length - 1) {
+        if (currentIndex < products.length) {
             setCurrentIndex(currentIndex + 1)
-        } else {
-            setCurrentIndex(0) // Loop
         }
         setDragOffset({ x: 0, y: 0 })
         setIsAnimating(false)
@@ -170,7 +168,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
             </div>
 
             {/* Card Container */}
-            <div className="flex-1 relative w-full mb-6 max-w-md mx-auto">
+            <div className="flex-1 relative w-full mb-6 max-w-[280px] lg:max-w-xs min-[1600px]:max-w-md mx-auto shrink-0">
                 {/* Actual Swipe Card */}
                 <div
                     ref={cardRef}
@@ -208,7 +206,7 @@ export default function SwipeInterfaceDesktop({ products, onAddToCart, onAddToBu
                         />
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 min-[1600px]:p-6">
                         <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{currentProduct.title}</h3>
                             <div className="text-right">
