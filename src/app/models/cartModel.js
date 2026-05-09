@@ -129,10 +129,14 @@ cartSchema.pre('save', function(next) {
     return sum + (item.price * item.quantity);
   }, 0);
   
+  console.log('Calculating totalDiscount...');
   this.totalDiscount = this.items.reduce((sum, item) => {
-    const itemDiscount = (item.originalPrice - item.price) * item.quantity;
+    const diff = item.originalPrice - item.price;
+    const itemDiscount = Math.max(0, diff) * item.quantity;
+    console.log(`Item: ${item._id}, originalPrice: ${item.originalPrice}, price: ${item.price}, diff: ${diff}, itemDiscount: ${itemDiscount}`);
     return sum + itemDiscount;
   }, 0);
+  console.log('Calculated totalDiscount:', this.totalDiscount);
   
   // Update last activity
   this.lastActivityAt = new Date();
@@ -287,6 +291,9 @@ cartSchema.index({ createdAt: -1 });
 cartSchema.set('toJSON', { virtuals: true });
 cartSchema.set('toObject', { virtuals: true });
 
-const Cart = mongoose.models.Cart || mongoose.model("Cart", cartSchema);
+if (mongoose.models.Cart) {
+  delete mongoose.models.Cart;
+}
+const Cart = mongoose.model("Cart", cartSchema);
 
 export default Cart;
