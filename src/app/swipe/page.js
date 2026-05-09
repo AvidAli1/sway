@@ -389,6 +389,8 @@ export default function SwipePage() {
               user={user}
               showToast={showToast}
               onReachEnd={handleLoadMore}
+              loading={loading}
+              hasMore={hasMore}
             />
           ) : (
             <div className="text-center py-16 w-full">

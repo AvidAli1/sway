@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Heart, ShoppingCart, ArrowUp, ArrowRight, X, ArrowLeft, Archive, ShoppingBag, Star } from "lucide-react"
 
-export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket, user, showToast, onReachEnd }) {
+export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBucket, user, showToast, onReachEnd, loading, hasMore }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
 
@@ -246,10 +246,29 @@ export default function SwipeInterfaceMobile({ products, onAddToCart, onAddToBuc
 
     // If no more products, show end state
     if (!currentProduct) {
+        if (loading || hasMore) {
+            return (
+                <div className="flex flex-col justify-center items-center h-full space-y-6">
+                    <div className="relative w-20 h-20 flex items-center justify-center">
+                        <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-yellow-400 rounded-full border-t-transparent animate-spin"></div>
+                        <Heart className="w-8 h-8 text-yellow-400 animate-pulse fill-yellow-400/20" />
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-lg font-bold text-gray-900">Finding matches...</h3>
+                        <p className="text-gray-500 text-sm mt-1">Looking for more styles you'll love</p>
+                    </div>
+                </div>
+            )
+        }
+
         return (
-            <div className="text-center py-16 h-full flex flex-col justify-center items-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No more products!</h3>
-                <p className="text-gray-600">You've seen all available products.</p>
+            <div className="text-center py-16 h-full flex flex-col justify-center items-center px-4">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                    <Heart className="w-10 h-10 text-gray-300" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">You've seen it all!</h3>
+                <p className="text-gray-500 max-w-xs mx-auto">There are no more products matching your current filters. Check back later or adjust your filters.</p>
             </div>
         )
     }
