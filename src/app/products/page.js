@@ -241,18 +241,13 @@ function ProductsPageContent() {
         if (data.filters.colors) setColorsList(data.filters.colors)
         if (data.filters.seasons) setSeasonsList(data.filters.seasons)
 
-        // Only update price range based on actual data bounds
+        // Only update maximum available price for the UI slider limits.
+        // We DO NOT update `filters.priceRange` here, because changing `filters`
+        // will trigger the dependency array in the useEffect and cause an immediate
+        // double-fetch, erasing the products we just loaded!
         const fetchedMaxPrice = data.filters.priceRange && data.filters.priceRange.maxPrice > 0 ? data.filters.priceRange.maxPrice : 15000;
         setMaxAvailablePrice(fetchedMaxPrice);
-        const newPriceRange = data.filters.priceRange ? [data.filters.priceRange.minPrice || filters.priceRange[0], data.filters.priceRange.maxPrice || filters.priceRange[1]] : filters.priceRange
 
-        // Don't auto-select categories, just update keys if needed or rely on categoriesList
-        // setFilters updates triggered a re-fetch, which we want to avoid if possible or ensure is valid.
-
-        setFilters((prev) => ({
-          ...prev,
-          priceRange: newPriceRange,
-        }))
         hasSeededFiltersRef.current = true
       }
 
