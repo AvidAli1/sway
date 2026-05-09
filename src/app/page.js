@@ -555,31 +555,31 @@ export default function HomePage() {
 
         {/* Animated Rating Widget - Right Side */}
         <div
-          className={`absolute right-12 top-1/3 z-20 hidden xl:block transition-all duration-1200 ease-out ${heroInView ? "translate-x-0 opacity-100" : "translate-x-20 opacity-0"
+          className={`absolute right-8 lg:right-12 top-[10%] min-[1600px]:top-[20%] z-20 hidden lg:block transition-all duration-1200 ease-out ${heroInView ? "translate-x-0 opacity-100" : "translate-x-20 opacity-0"
             }`}
           style={{ transitionDelay: heroInView ? "800ms" : "0ms" }}
         >
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl max-w-xs transform hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="text-3xl font-bold text-black">4.8</div>
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 lg:p-5 min-[1600px]:p-6 shadow-xl w-56 lg:w-72 min-[1600px]:max-w-xs transform hover:scale-105 transition-transform duration-300">
+            <div className="flex items-center gap-2 min-[1600px]:gap-3 mb-2 min-[1600px]:mb-3">
+              <div className="text-2xl min-[1600px]:text-3xl font-bold text-black">4.8</div>
               <div className="flex">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <Star key={i} className="w-3 h-3 min-[1600px]:w-4 min-[1600px]:h-4 fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Happy Clients Score</p>
-            <p className="text-xs text-gray-500">It&apos;s all about the shopping experience</p>
+            <p className="text-xs min-[1600px]:text-sm text-gray-600 mb-2 min-[1600px]:mb-4">Happy Clients Score</p>
+            <p className="text-[10px] min-[1600px]:text-xs text-gray-500">It&apos;s all about the shopping experience</p>
 
             {/* Small preview image */}
-            <div className="mt-4 relative">
+            <div className="mt-3 min-[1600px]:mt-4 relative">
               <img
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/asset1-yDCzN4GGsiQtY5DrLsifRUR0vFK4da.webp"
                 alt="Fashion preview"
                 className="w-full h-[18rem] object-cover object-[center_5%] rounded-lg"
               />
-              <div className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                <ArrowRight className="w-3 h-3 text-black" />
+              <div className="absolute top-2 right-2 w-5 h-5 min-[1600px]:w-6 min-[1600px]:h-6 bg-white rounded-full flex items-center justify-center">
+                <ArrowRight className="w-2 h-2 min-[1600px]:w-3 min-[1600px]:h-3 text-black" />
               </div>
             </div>
           </div>
