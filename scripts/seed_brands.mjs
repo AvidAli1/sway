@@ -157,7 +157,7 @@ async function seed() {
 
             // 1. Ensure User
             const email = `contact@${slugify(brandData.name)}.com`;
-            const hashedPassword = await bcrypt.hash("password123", 10);
+            const hashedPassword = await bcrypt.hash("toastypanda789", 10);
 
             let user = await User.findOne({ email });
             if (!user) {
